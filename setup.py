@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
     name='gfatypes',
-    version='0.0.2',
+    version='0.1.0',
     description='Abstraction layer for GFA file format',
     url='https://github.com/Tharos-ux/gfatypes',
     author='Tharos',

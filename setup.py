@@ -1,7 +1,7 @@
 from setuptools import setup
 setup(
     name='gfagraphs',
-    version='0.1.0',
+    version='0.1.7',
     description='Abstraction layer for GFA file format',
     url='https://github.com/Tharos-ux/gfatypes',
     author='Tharos',
@@ -9,5 +9,5 @@ setup(
     license='MIT',
     packages=['gfagraphs'],
     zip_safe=False,
-    install_requires=[]
+    install_requires=['networkx', 'tharospytools']
 )

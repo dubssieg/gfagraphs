@@ -1,3 +1,7 @@
+[![](https://img.shields.io/badge/Python-3.10-blue.svg)]()
+[![](https://img.shields.io/badge/Documentation-unfinished-orange.svg)]()
+[![](https://img.shields.io/badge/build-passing-green.svg)]()
+
 # GFAgraphs
 
 This package aims to be an abstraction layer for GFA file format.

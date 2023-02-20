@@ -74,6 +74,7 @@ class GfaStyle(Enum):
 
 class LineType():
     "Modelizes the line type in GFA format by the meaning of first char of sequence"
+    __slots__ = ['type', 'func']
 
     def __init__(self, key: str) -> None:
         mapping: dict = {
@@ -279,6 +280,7 @@ class Record():
     """
     Modelizes a GFA line
     """
+    __slots__ = ['gfastyle', 'linetype', 'datas', '__class__']
 
     def __init__(self, gfa_data_line: str, gfa_type: str, **kwargs) -> None:
         datas: list = gfa_data_line.strip('\n').split('\t')
@@ -292,6 +294,8 @@ class Graph():
     """
     Modelizes a GFA graph
     """
+    __slots__ = ['version', 'graph', 'headers', 'segments',
+                 'lines', 'containment', 'paths', 'walks', 'jumps']
 
     def __init__(self, gfa_file: str, gfa_type: str, with_sequence: bool = False) -> None:
         self.version: GfaStyle = GfaStyle(gfa_type)

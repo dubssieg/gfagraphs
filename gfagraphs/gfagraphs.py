@@ -70,6 +70,7 @@ class GfaStyle(Enum):
     GFA1_1 = 'GFA1.1'
     GFA1_2 = 'GFA1.2'
     GFA2 = 'GFA2'
+    UNK = 'unknown'
 
 
 class LineType():
@@ -77,6 +78,7 @@ class LineType():
     __slots__ = ['type', 'func']
 
     def __init__(self, key: str) -> None:
+        default_value: tuple = (default, Other)
         mapping: dict = {
             'H': (header, Header),
             'S': (segment, Segment),
@@ -86,8 +88,7 @@ class LineType():
             'W': (walk, Walk),
             'J': (jump, Jump)
         }
-        self.type = mapping[key][1]
-        self.func = mapping[key][0]
+        self.func, self.type = mapping.get(key, default_value)
 
 
 class Header():
@@ -137,6 +138,29 @@ class Jump():
     datas: dict
     gfastyle: GfaStyle
     linetype: LineType
+
+
+class Other():
+    "Empty type to define linestyle"
+    datas: dict
+    gfastyle: GfaStyle
+    linetype: LineType
+
+
+def default(datas: list, gfa_style: GfaStyle, **kwargs) -> dict:
+    """Extracts the data from a unknown line
+
+    Args:
+        datas (list): parsed GFA line
+        gfa_style (GfaStyle): informations about gfa subformat
+
+    Returns:
+        dict: mapping tags:values
+    """
+    if gfa_style == GfaStyle.RGFA:
+        raise ValueError(
+            f"Incompatible version format, H-lines vere added in GFA1 and were absent from {gfa_style}.")
+    return supplementary_datas(datas, 0)
 
 
 def header(datas: list, gfa_style: GfaStyle, **kwargs) -> dict:
@@ -245,11 +269,11 @@ def walk(datas: list[str], gfa_style: GfaStyle, **kwargs) -> dict:
     if gfa_style in [GfaStyle.RGFA, GfaStyle.GFA1]:
         raise ValueError(
             f"Incompatible version format, W-lines vere added in GFA1.1 and were absent from {gfa_style}.")
-    line_datas["id"] = datas[1]
+    line_datas["id"] = datas[3]
     line_datas["origin"] = int(datas[2])
-    line_datas["name"] = datas[3]
-    line_datas["target"] = datas[4]
-    line_datas["length"] = datas[5]
+    line_datas["name"] = datas[1]
+    line_datas["start_offset"] = datas[4]
+    line_datas["stop_offset"] = datas[5]
     line_datas["path"] = [
         (
             node[1:],
@@ -295,7 +319,7 @@ class Graph():
     Modelizes a GFA graph
     """
     __slots__ = ['version', 'graph', 'headers', 'segments',
-                 'lines', 'containment', 'paths', 'walks', 'jumps']
+                 'lines', 'containment', 'paths', 'walks', 'jumps', 'others', 'colors']
 
     def __init__(self, gfa_file: str, gfa_type: str, with_sequence: bool = False) -> None:
         self.version: GfaStyle = GfaStyle(gfa_type)
@@ -317,7 +341,9 @@ class Graph():
             rec for rec in gfa_lines if isinstance(rec, Walk)]
         self.jumps: list[Jump] = [
             rec for rec in gfa_lines if isinstance(rec, Jump)]
-        gfa_lines = list()
+        self.others: list[Other] = [
+            rec for rec in gfa_lines if isinstance(rec, Other)]
+        del gfa_lines
 
     def __str__(self) -> str:
         return f"GFA Graph object (version {self.version.value}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)+len(self.walks)} paths."
@@ -366,6 +392,26 @@ class Graph():
         raise ValueError(
             f"Specified name {name} does not define a path in your GFA file.")
 
+    def assert_format(self) -> GfaStyle:
+        """Given the loaded file, asserts the GFA standard it is
+
+        Returns:
+            GfaStyle: a gfa subformat descriptor
+        """
+        ver: GfaStyle = self.version
+        if len(self.others) > 0:
+            ver = GfaStyle.GFA2
+        elif len(self.jumps) > 0:
+            ver = GfaStyle.GFA1_2
+        elif len(self.walks) > 0:
+            ver = GfaStyle.GFA1_1
+        elif len(self.headers) > 0 or len(self.paths) > 0:
+            ver = GfaStyle.GFA1
+        else:
+            ver = GfaStyle.RGFA
+        self.version = ver
+        return ver
+
     def compute_networkx(self, node_prefix: str | None = None) -> MultiDiGraph:
         """Computes the networkx representation of the GFA.
 
@@ -374,14 +420,22 @@ class Graph():
         """
         node_prefix = f"{node_prefix}_" if node_prefix is not None else ""
         for node in self.segments:
+            node_title: list = []
+            for key, val in node.datas.items():
+                if isinstance(val, dict):
+                    node_title.extend([f"{k} : {v}" for k, v in val.items()])
+                else:
+                    node_title.append(f"{key} : {val}")
             self.graph.add_node(
                 f"{node_prefix}{node.datas['name']}",
-                title=f"Len. {str(node.datas['length'])}",
+                title='\n'.join(node_title),
                 color='darkslateblue',
-                size=log10(node.datas["length"])
+                size=10+log10(node.datas["length"])
             )
         palette: list = get_palette(
             len(path_list := self.get_path_list()), as_hex=True)
+        self.colors = {p.datas["name"]: palette[i]
+                       for i, p in enumerate(path_list)}
         if len(path_list) > 0:
             visited_paths: int = 0
             for visited_path in path_list:

@@ -306,7 +306,7 @@ class Record():
     """
     __slots__ = ['gfastyle', 'linetype', 'datas', '__class__']
 
-    def __init__(self, gfa_data_line: str, gfa_type: str, **kwargs) -> None:
+    def __init__(self, gfa_data_line: str, gfa_type: str, kwargs: dict) -> None:
         datas: list = gfa_data_line.strip('\n').split('\t')
         self.gfastyle: GfaStyle = GfaStyle(gfa_type)
         self.linetype: LineType = LineType(gfa_data_line[0])
@@ -326,7 +326,7 @@ class Graph():
         self.graph = MultiDiGraph()
         with open(gfa_file, 'r', encoding='utf-8') as gfa_reader:
             gfa_lines: list[Record] = [
-                Record(gfa_line, gfa_type, ws=with_sequence) for gfa_line in gfa_reader]
+                Record(gfa_line, gfa_type, {'ws': with_sequence}) for gfa_line in gfa_reader]
         self.headers: list[Header] = [
             rec for rec in gfa_lines if isinstance(rec, Header)]
         self.segments: list[Segment] = [

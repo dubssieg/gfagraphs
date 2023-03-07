@@ -14,7 +14,7 @@ if CURRENT_PYTHON < REQUIRED_PYTHON:
 
 setup(
     name=NAME,
-    version='0.1.18',
+    version='0.1.19',
     description='Abstraction layer for GFA file format',
     url='https://github.com/Tharos-ux/gfatypes',
     author='Tharos',

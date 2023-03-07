@@ -306,7 +306,7 @@ class Record():
     """
     __slots__ = ['gfastyle', 'linetype', 'datas', '__class__']
 
-    def __init__(self, gfa_data_line: str, gfa_type: str, kwargs: dict) -> None:
+    def __init__(self, gfa_data_line: str, gfa_type: str, kwargs: dict = {}) -> None:
         datas: list = gfa_data_line.strip('\n').split('\t')
         self.gfastyle: GfaStyle = GfaStyle(gfa_type)
         self.linetype: LineType = LineType(gfa_data_line[0])

@@ -3,7 +3,7 @@ from enum import Enum
 from re import sub, match
 from typing import Callable
 from math import log10
-from json import loads
+from json import loads, dumps
 from networkx import MultiDiGraph
 from tharospytools import get_palette
 
@@ -32,6 +32,34 @@ def gtype(tag_type: str) -> type | Callable:
     elif tag_type == 'H' or tag_type == 'B':
         raise NotImplementedError()
     raise ValueError(f"Type identifier {tag_type} is not in the GFA standard")
+
+
+def dtype(data: object) -> str:
+    """Interprets tags of GFA as a Python-compatible format
+
+    Args:
+        tag_type (str): the letter that identifies the GFA data type
+
+    Raises:
+        NotImplementedError: happens if its an array or byte array (needs doc)
+        ValueError: happens if format is not in GFA standards
+
+    Returns:
+        type | Callable: the cast method or type to apply
+    """
+    if isinstance(data, int):
+        return 'i'
+    elif isinstance(data, float):
+        return 'f'
+    elif isinstance(data, str):
+        return 'Z'
+    else:
+        try:
+            _: str = dumps(data)
+            return 'J'
+        except (TypeError, OverflowError) as exc:
+            raise ValueError(
+                f"Type {type(data)} is not in the GFA standard") from exc
 
 
 def supplementary_datas(datas: list, length_condition: int) -> dict:
@@ -97,6 +125,9 @@ class Header():
     gfastyle: GfaStyle
     linetype: LineType
 
+    def __repr__(self) -> str:
+        return '\t'.join([f"{key}:{dtype(value)}:{value}" for key, value in self.datas.items()])
+
 
 class Segment():
     "Empty type to define linestyle"
@@ -104,12 +135,19 @@ class Segment():
     gfastyle: GfaStyle
     linetype: LineType
 
+    def __repr__(self) -> str:
+        return f"{self.datas['name']}\t{self.datas['seq'] if 'seq' in self.datas else 'N'*self.datas['length']}\t" + '\t'.join([f"{key}:{dtype(value)}:{value}" for key, value in self.datas.items() if key not in ['length', 'seq', 'name']])
+
 
 class Line():
     "Empty type to define linestyle"
     datas: dict
     gfastyle: GfaStyle
     linetype: LineType
+
+    def __repr__(self) -> str:
+        ori1, ori2 = self.datas['orientation'].split('/')
+        return f"{self.datas['start']}\t{ori1}\t{self.datas['end']}\t{ori2}\t" + '\t'.join([f"{key}:{dtype(value)}:{value}" for key, value in self.datas.items() if key not in ['orientation', 'start', 'end']])
 
 
 class Containment():
@@ -430,7 +468,8 @@ class Graph():
                 f"{node_prefix}{node.datas['name']}",
                 title='\n'.join(node_title),
                 color='darkslateblue',
-                size=10+log10(node.datas["length"])
+                size=10+log10(node.datas["length"]),
+                offsets=node.datas['PO'] if 'PO' in node.datas else None
             )
         palette: list = get_palette(
             len(path_list := self.get_path_list()), as_hex=True)
@@ -461,3 +500,55 @@ class Graph():
                     weight=3
                 )
         return self.graph
+
+    def save_graph(self, output_path: str, output_format: GfaStyle | None = None) -> None:
+        """Given a gfa Graph object, saves to a valid gfa file the Graph.
+
+        Args:
+            output_path (str): a path on disk where to save
+            output_format (GfaStyle): a format to choose for output.
+                if None, default graph format will be used.
+        """
+        output_format = output_format or self.version
+        line_number: int = 0
+        with open(output_path, 'w', encoding='utf-8') as gfa_writer:
+            if len(self.headers) and output_format != GfaStyle.RGFA:
+                for head in self.headers:
+                    gfa_writer.write(f"H\t{head}\n")
+            if len(self.segments):
+                for seg in self.segments:
+                    gfa_writer.write(f"S\t{seg}\n")
+            if len(self.lines):
+                for lin in self.lines:
+                    gfa_writer.write(f"L\n{lin}\n")
+            if len(pathlist := self.get_path_list()):
+                for pathl in pathlist:
+                    gfa_writer.write(
+                        f"{write_path(pathl,output_format,line_number)}")
+                    line_number += 1
+
+
+def write_path(way: Walk | Path, gfa_format: GfaStyle, line_number: int) -> str:
+    """Selects if path should be saved in P or W format, and creates the repr string
+
+    Args:
+        way (Walk | Path): the Walk or Path object we want to represent
+        format (GfaStyle): the output GFA format
+
+    Returns:
+        str: a gfa compatible string describing path
+    """
+    if gfa_format == GfaStyle.GFA1:  # P-line
+        strpath: str = ','.join(
+            [f"{node_name}{'+' if orient == Orientation.FORWARD else '-'}" for node_name, orient in way.datas['path']])
+
+        return f"P\t{way.datas['name']}\t{strpath}\t*"
+
+    elif gfa_format == GfaStyle.GFA1_1 or gfa_format == GfaStyle.GFA1_2 or gfa_format == GfaStyle.GFA2:
+        # W-line
+        offset_start: int | str = way.datas['start_offset'] if 'start_offset' in way.datas else '?'
+        offset_stop: int | str = way.datas['stop_offset'] if 'stop_offset' in way.datas else '?'
+        strpath: str = ''.join(
+            [f"{'>' if orient == Orientation.FORWARD else '<'}{node_name}" for node_name, orient in way.datas['path']])
+        return f"W\t{way.datas['name']}\t{line_number}\t{way.datas['name']}\t{offset_start}\t{offset_stop}\t{strpath}\t*"
+    return ""

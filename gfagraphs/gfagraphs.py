@@ -1,9 +1,10 @@
 "Tools to represent GFA format"
 from enum import Enum
 from re import sub, match
-from typing import Callable
+from typing import Callable, Iterable
 from math import log10
 from json import loads, dumps
+from itertools import chain
 from networkx import MultiDiGraph
 from tharospytools import get_palette
 
@@ -125,8 +126,11 @@ class Header():
     gfastyle: GfaStyle
     linetype: LineType
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return '\t'.join([f"{key}:{dtype(value)}:{value}" for key, value in self.datas.items()])
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class Segment():
@@ -135,8 +139,11 @@ class Segment():
     gfastyle: GfaStyle
     linetype: LineType
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"{self.datas['name']}\t{self.datas['seq'] if 'seq' in self.datas else 'N'*self.datas['length']}\t" + '\t'.join([f"{key}:{dtype(value)}:{value}" for key, value in self.datas.items() if key not in ['length', 'seq', 'name']])
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class Line():
@@ -145,9 +152,12 @@ class Line():
     gfastyle: GfaStyle
     linetype: LineType
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         ori1, ori2 = self.datas['orientation'].split('/')
         return f"{self.datas['start']}\t{ori1}\t{self.datas['end']}\t{ori2}\t" + '\t'.join([f"{key}:{dtype(value)}:{value}" for key, value in self.datas.items() if key not in ['orientation', 'start', 'end']])
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class Containment():
@@ -214,7 +224,7 @@ def header(datas: list, gfa_style: GfaStyle, **kwargs) -> dict:
     if gfa_style == GfaStyle.RGFA:
         raise ValueError(
             f"Incompatible version format, H-lines vere added in GFA1 and were absent from {gfa_style}.")
-    return supplementary_datas(datas, 0)
+    return supplementary_datas(datas, 1)
 
 
 def segment(datas: list, gfa_style: GfaStyle, **kwargs) -> dict:
@@ -265,7 +275,7 @@ def containment(datas: list, gfa_style: GfaStyle, **kwargs) -> dict:
     if gfa_style == GfaStyle.RGFA:
         raise ValueError(
             f"Incompatible version format, C-lines vere added in GFA1 and were absent from {gfa_style}.")
-    return supplementary_datas(datas, 0)
+    return supplementary_datas(datas, 1)
 
 
 def path(datas: list[str], gfa_style: GfaStyle, **kwargs) -> dict:
@@ -335,7 +345,7 @@ def jump(datas: list, gfa_style: GfaStyle, **kwargs) -> dict:
     if gfa_style in [GfaStyle.RGFA, GfaStyle.GFA1, GfaStyle.GFA1_1]:
         raise ValueError(
             f"Incompatible version format, J-lines vere added in GFA1.2 and were absent from {gfa_style}.")
-    return supplementary_datas(datas, 0)
+    return supplementary_datas(datas, 1)
 
 
 class Record():
@@ -350,6 +360,12 @@ class Record():
         self.linetype: LineType = LineType(gfa_data_line[0])
         self.datas: dict = self.linetype.func(datas, self.gfastyle, **kwargs)
         self.__class__ = self.linetype.type
+
+    def __str__(self) -> str:
+        return "RawRecord()"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class Graph():
@@ -386,6 +402,121 @@ class Graph():
     def __str__(self) -> str:
         return f"GFA Graph object (version {self.version.value}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)+len(self.walks)} paths."
 
+    def split_segments(self, segment_name: str, future_segment_name: str | list, position_to_split: int | list) -> None:
+        """Given a segment to split and a series/single new name(s) + position(s),
+        breaks the node in multiple nodes and includes splits them in the Graph data
+
+        Args:
+            segment_name (str): the name of the node to break
+            future_segment_name (str | list): the name(s) of the future nodes
+            position_to_split (int | list): the position(s) where to split the sequence
+
+        Raises:
+            ValueError: if the provided args aren't compatible
+        """
+        node_to_split: Segment = self.get_segment(segment_name)
+        if not isinstance(future_segment_name, Iterable):
+            future_segment_name = [future_segment_name]
+        if not isinstance(position_to_split, Iterable):
+            position_to_split = [position_to_split]
+        if len(future_segment_name) != len(position_to_split):
+            raise ValueError("Parameters does not have the same length.")
+
+        # Possible multi-split
+        sequence = node_to_split.datas['seq'] if 'seq' in node_to_split.datas else 'N' * \
+            node_to_split.datas['length']
+
+        # Get incomming and exuting edges
+        edges_of_node: list[Line] = self.get_edges(segment_name)
+        orient: str = ""
+        for edge in edges_of_node:
+            if edge.datas['start'] == segment_name:
+                orient: str = edge.datas['orientation'].split('/')[0]
+                # Edge is output, should be changed
+                edge.datas['start'] = future_segment_name[-1]
+            else:
+                orient: str = edge.datas['orientation'].split('/')[-1]
+                # Edge is incomming edge, should be kept
+
+        # Edit first node
+        node_to_split.datas['seq'] = node_to_split.datas['seq'][:position_to_split[0]
+                                                                ] if 'seq' in node_to_split.datas else 'N'*position_to_split[0]
+
+        for i, pos1 in enumerate((positions := position_to_split+[len(sequence)])[:-1]):
+            # Divide the node by creating an new one and updating attributes
+            pos2 = positions[i+1]
+            new_seg: Segment = Segment()
+            new_seg.datas['name'] = future_segment_name[i]
+            new_seg.datas['seq'] = sequence[pos1:pos2]
+            new_seg.datas['length'] = len(new_seg.datas['seq'])
+            self.segments.append(new_seg)
+
+            # Create new edge between, re-assign sorting edges to new node
+            new_edge: Line = Line()
+            new_edge.datas['start'] = future_segment_name[i]
+            new_edge.datas['stop'] = future_segment_name[i+1]
+            # Get orientation of incomming edge and output edge, mix them for orientation of the new edge
+            new_edge.datas['orientation'] = f"{orient}/{orient}"
+            self.lines.append(new_edge)
+
+            # Add to paths by inserting after node to be splitted
+            for ipath in self.get_path_list():
+                for posx, (node, _) in enumerate(ipath.datas['path']):
+                    if node == segment_name:
+                        ipath.datas['path'] = ipath.datas['path'][:posx] + [(nname, Orientation(
+                            orient)) for nname in future_segment_name] + ipath.datas['path'][posx:]
+
+    def merge_segments(self, *segs: str) -> str:
+        """Given a series of nodes, merges it to the first of the series.
+        """
+
+        # Re-ordering nodes for edition
+        segments_positions: list = [self.get_segment_position(s) for s in sorted(
+            [seg for seg in segs], key=lambda x: int(x))]
+        left_most: Segment = self.segments[segments_positions[0]]
+        right_most: Segment = self.segments[segments_positions[-1]]
+
+        # Editing properties of node
+        left_most.datas['length'] += sum([int(self.segments[i].datas['length'])
+                                         for i in segments_positions[1:]])
+        if 'seq' in left_most.datas:
+            left_most.datas['seq'] = ''.join(
+                [self.segments[i].datas['seq'] for i in segments_positions])
+
+        # Find anchors for last node, and replicates it for first node
+        edges_to_edit = self.get_edges_positions(
+            right_most_name := right_most.datas['name'])
+        left_most_name: str = left_most.datas['name']
+        for edge_pos in edges_to_edit:
+            if self.lines[edge_pos].datas['start'] == right_most_name:
+                self.lines[edge_pos].datas['start'] = left_most_name
+            else:
+                self.lines[edge_pos].datas['stop'] = left_most_name
+
+        edges_to_delete = list(chain(*[self.get_edges_positions(
+            self.segments[node_pos].datas['name']) for node_pos in segments_positions[1:-1]]))
+
+        # Edit the paths by iterating over all paths
+        for ipath in self.get_path_list():
+            start_pos: int = 0
+            end_pos: int = 0
+            for i, (name, _) in enumerate(ipath.datas['path']):
+                if name == left_most_name:
+                    start_pos: int = i
+                elif name == right_most_name:
+                    end_pos: int = i
+            if start_pos and end_pos:
+                ipath.datas['path'] = ipath.datas['path'][:min(
+                    [start_pos, end_pos])] + ipath.datas['path'][max([start_pos, end_pos]):]
+
+        # Delete nodes and edges that are not relevant anymore
+        self.segments = [seg for i, seg in enumerate(
+            self.segments) if i not in segments_positions[1:-1]]
+        self.lines = [lin for i, lin in enumerate(
+            self.lines) if i not in edges_to_delete]
+
+        return left_most_name
+
     def get_segment(self, node: str) -> Segment:
         """Search the node with the corresponding node name inside the graph, and returns it.
 
@@ -402,6 +533,24 @@ class Graph():
         for seg in self.segments:
             if seg.datas["name"] == node:
                 return seg
+        raise ValueError(f"Node {node} is not in graph.")
+
+    def get_segment_position(self, node: str):
+        """Search the node with the corresponding node name inside the graph, and returns it.
+
+        Args:
+            node (str): a string, identifier of the node
+
+        Raises:
+            ValueError: if node is not in graph
+
+        Returns:
+            Segment: the line describing the node
+        """
+        node = str(node)
+        for i, seg in enumerate(self.segments):
+            if seg.datas["name"] == node:
+                return i
         raise ValueError(f"Node {node} is not in graph.")
 
     def get_path_list(self) -> list[Path | Walk]:
@@ -449,6 +598,30 @@ class Graph():
             ver = GfaStyle.RGFA
         self.version = ver
         return ver
+
+    def get_edges(self, node: str) -> list[Line]:
+        """_summary_
+
+        Args:
+            node (str): _description_
+
+        Returns:
+            list[Line]: _description_
+        """
+        return [edge for edge in self.lines if node ==
+                edge.datas['start'] or node == edge.datas['stop']]
+
+    def get_edges_positions(self, node: str) -> list[int]:
+        """_summary_
+
+        Args:
+            node (str): _description_
+
+        Returns:
+            list[Line]: _description_
+        """
+        return [i for i, edge in enumerate(self.lines) if node ==
+                edge.datas['start'] or node == edge.datas['stop']]
 
     def compute_networkx(self, node_prefix: str | None = None) -> MultiDiGraph:
         """Computes the networkx representation of the GFA.
@@ -514,13 +687,17 @@ class Graph():
         with open(output_path, 'w', encoding='utf-8') as gfa_writer:
             if len(self.headers) and output_format != GfaStyle.RGFA:
                 for head in self.headers:
-                    gfa_writer.write(f"H\t{head}\n")
+                    gfa_writer.write(
+                        "H\t"+'\t'.join([f"{key}:{dtype(value)}:{value}" if not key.startswith('ARG') else str(value) for key, value in head.datas.items()])+"\n")
             if len(self.segments):
                 for seg in self.segments:
-                    gfa_writer.write(f"S\t{seg}\n")
+                    gfa_writer.write("S\t"+f"{seg.datas['name']}\t{seg.datas['seq'] if 'seq' in seg.datas else 'N'*seg.datas['length']}\t" + '\t'.join(
+                        [f"{key}:{dtype(value)}:{value}" if not key.startswith('ARG') else str(value) for key, value in seg.datas.items() if key not in ['length', 'seq', 'name']])+"\n")
             if len(self.lines):
                 for lin in self.lines:
-                    gfa_writer.write(f"L\n{lin}\n")
+                    ori1, ori2 = lin.datas['orientation'].split('/')
+                    gfa_writer.write(f"L\t"+f"{lin.datas['start']}\t{ori1}\t{lin.datas['end']}\t{ori2}\t" + '\t'.join(
+                        [f"{key}:{dtype(value)}:{value}" if not key.startswith('ARG') else str(value) for key, value in lin.datas.items() if key not in ['orientation', 'start', 'end']])+"\n")
             if len(pathlist := self.get_path_list()):
                 for pathl in pathlist:
                     gfa_writer.write(
@@ -550,5 +727,5 @@ def write_path(way: Walk | Path, gfa_format: GfaStyle, line_number: int) -> str:
         offset_stop: int | str = way.datas['stop_offset'] if 'stop_offset' in way.datas else '?'
         strpath: str = ''.join(
             [f"{'>' if orient == Orientation.FORWARD else '<'}{node_name}" for node_name, orient in way.datas['path']])
-        return f"W\t{way.datas['name']}\t{line_number}\t{way.datas['name']}\t{offset_start}\t{offset_stop}\t{strpath}\t*"
+        return f"W\t{way.datas['name']}\t{way.datas['origin'] if 'origin' in way.datas else line_number}\t{way.datas['name']}\t{offset_start}\t{offset_stop}\t{strpath}\t*\n"
     return ""

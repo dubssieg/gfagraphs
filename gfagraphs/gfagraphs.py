@@ -454,7 +454,7 @@ class Graph():
             # Create new edge between, re-assign sorting edges to new node
             new_edge: Line = Line()
             new_edge.datas['start'] = future_segment_name[i]
-            new_edge.datas['stop'] = future_segment_name[i+1]
+            new_edge.datas['end'] = future_segment_name[i+1]
             # Get orientation of incomming edge and output edge, mix them for orientation of the new edge
             new_edge.datas['orientation'] = f"{orient}/{orient}"
             self.lines.append(new_edge)
@@ -491,7 +491,7 @@ class Graph():
             if self.lines[edge_pos].datas['start'] == right_most_name:
                 self.lines[edge_pos].datas['start'] = left_most_name
             else:
-                self.lines[edge_pos].datas['stop'] = left_most_name
+                self.lines[edge_pos].datas['end'] = left_most_name
 
         edges_to_delete = list(chain(*[self.get_edges_positions(
             self.segments[node_pos].datas['name']) for node_pos in segments_positions[1:-1]]))
@@ -609,7 +609,7 @@ class Graph():
             list[Line]: _description_
         """
         return [edge for edge in self.lines if node ==
-                edge.datas['start'] or node == edge.datas['stop']]
+                edge.datas['start'] or node == edge.datas['end']]
 
     def get_edges_positions(self, node: str) -> list[int]:
         """_summary_
@@ -621,7 +621,7 @@ class Graph():
             list[Line]: _description_
         """
         return [i for i, edge in enumerate(self.lines) if node ==
-                edge.datas['start'] or node == edge.datas['stop']]
+                edge.datas['start'] or node == edge.datas['end']]
 
     def compute_networkx(self, node_prefix: str | None = None) -> MultiDiGraph:
         """Computes the networkx representation of the GFA.

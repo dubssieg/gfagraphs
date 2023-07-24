@@ -763,8 +763,15 @@ class Graph():
                 offsets=node.datas['PO'] if 'PO' in node.datas else None,
                 sequence=node.datas.get('seq', '')
             )
-        palette: list = get_palette(
-            len(path_list := self.get_path_list()), as_hex=True)
+
+        #hack to run with more than 256 paths
+        path_list = self.get_path_list()
+        number_of_colors = len(path_list)
+        colormap = viridis = mpl.colormaps['viridis'].resampled(number_of_colors)
+        palette = [rgb2hex(colormap(int(x * colormap.N / number_of_colors))) for x in range(number_of_colors)]
+        # palette: list = get_palette(
+        #     len(path_list := self.get_path_list()), as_hex=True)
+
         self.colors = {p.datas["name"]: palette[i]
                        for i, p in enumerate(path_list)}
         if len(path_list) > 0:

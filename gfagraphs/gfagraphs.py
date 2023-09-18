@@ -6,7 +6,7 @@ from math import log10
 from copy import deepcopy
 from json import loads, dumps
 from itertools import chain
-from networkx import MultiDiGraph
+from networkx import MultiDiGraph, Graph as nxGraph
 from tharospytools import get_palette
 
 
@@ -737,8 +737,35 @@ class Graph():
         return [i for i, edge in enumerate(self.lines) if node ==
                 edge.datas['start'] or node == edge.datas['end']]
 
+    def compute_backbone(self) -> nxGraph:
+        """Computes a networkx representation of the graph, for computing purposes
+
+        Returns:
+            nxGraph: a networkx graph featuring the backbone of the pangenome graph
+        """
+        backbone: nxGraph = nxGraph()
+
+        for node in self.segments:
+            backbone.add_node(
+                node.datas['name'],
+                offsets=node.datas['PO'] if 'PO' in node.datas else None,
+                sequence=node.datas.get('seq', '')
+            )
+        for edge in self.lines:
+
+            backbone.add_edge(
+                edge.datas['start'],
+                edge.datas['end'],
+                label=edge.datas["orientation"],
+            )
+        return backbone
+
     def compute_networkx(self, node_prefix: str | None = None) -> MultiDiGraph:
         """Computes the networkx representation of the GFA.
+        This function is intended to be used for graphical representation purposes, and not for computing metrics on the graph.
+
+        Args:
+            node_prefix (str): a prefix used when displaying multiple graphs to prevent node name collisions
 
         Returns:
             MultiDiGraph: a networkx graph featuring the maximum of information
@@ -763,14 +790,8 @@ class Graph():
                 offsets=node.datas['PO'] if 'PO' in node.datas else None,
                 sequence=node.datas.get('seq', '')
             )
-
-        #hack to run with more than 256 paths
-        path_list = self.get_path_list()
-        number_of_colors = len(path_list)
-        colormap = viridis = mpl.colormaps['viridis'].resampled(number_of_colors)
-        palette = [rgb2hex(colormap(int(x * colormap.N / number_of_colors))) for x in range(number_of_colors)]
-        # palette: list = get_palette(
-        #     len(path_list := self.get_path_list()), as_hex=True)
+        palette: list = get_palette(
+            len(path_list := self.get_path_list()), as_hex=True)
 
         self.colors = {p.datas["name"]: palette[i]
                        for i, p in enumerate(path_list)}

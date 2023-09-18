@@ -390,9 +390,9 @@ class Graph():
         """Constructor for GFA Graph object.
 
         Args:
-            gfa_file (str | None, optional): _description_. Defaults to None.
-            gfa_type (str, optional): _description_. Defaults to 'unknown'.
-            with_sequence (bool, optional): _description_. Defaults to False.
+            gfa_file (str | None, optional): A file path to a valid GFA file. Defaults to None.
+            gfa_type (str, optional): A descriptor for the GFA sub-format : ['rGFA','GFA1','GFA1.1','GFA1.2','GFA2']. Defaults to 'unknown'.
+            with_sequence (bool, optional): If sequence should be included in nodes. Consumes more memory with huge graphs. Defaults to False.
 
         Raises:
             OSError: The file does not exists

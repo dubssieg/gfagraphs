@@ -1,4 +1,6 @@
 "Tools to represent GFA format"
+from os.path import exists
+from os import stat
 from enum import Enum
 from re import sub, match
 from typing import Callable
@@ -385,40 +387,79 @@ class Graph():
                  'lines', 'containment', 'paths', 'walks', 'jumps', 'others', 'colors']
 
     def __init__(self, gfa_file: str | None = None, gfa_type: str = 'unknown', with_sequence: bool = False) -> None:
-        if not gfa_file:
-            self.version: GfaStyle = GfaStyle(gfa_type)
-            self.headers: list[Header] = []
-            self.segments: list[Segment] = []
-            self.lines: list[Line] = []
-            self.containment: list[Containment] = []
-            self.paths: list[Path] = []
-            self.walks: list[Walk] = []
-            self.jumps: list[Jump] = []
-            self.others: list[Other] = []
-            self.graph = MultiDiGraph()
-        else:
-            self.version: GfaStyle = GfaStyle(gfa_type)
-            self.graph = MultiDiGraph()
+        """Constructor for GFA Graph object.
+
+        Args:
+            gfa_file (str | None, optional): _description_. Defaults to None.
+            gfa_type (str, optional): _description_. Defaults to 'unknown'.
+            with_sequence (bool, optional): _description_. Defaults to False.
+
+        Raises:
+            OSError: The file does not exists
+            IOError: The file descriptor is invalid
+            IOError: The file is empty
+            ValueError: A line does not start with a capital letter
+        """
+        # Declaring attributes
+        self.version: GfaStyle = GfaStyle(gfa_type)
+        self.headers: list[Header] = []
+        self.segments: list[Segment] = []
+        self.lines: list[Line] = []
+        self.containment: list[Containment] = []
+        self.paths: list[Path] = []
+        self.walks: list[Walk] = []
+        self.jumps: list[Jump] = []
+        self.others: list[Other] = []
+        self.graph = MultiDiGraph()
+        if gfa_file:
+            # We try to load file from disk
+            # Checking if path exists
+            if not exists(gfa_file):
+                raise OSError(
+                    "Specified file does not exists. Please check provided path."
+                )
+            # Checking if file descriptor is valid
+            if not gfa_file.endswith('.gfa'):
+                raise IOError(
+                    "File descriptor is invalid. Please check format, this lib is designed to work with Graphical Fragment Assembly (GFA) files."
+                )
+            # Checking if file is not empty
+            if stat(gfa_file).st_size == 0:
+                raise IOError(
+                    "File is empty."
+                )
+            # All lines shall start by a captial letter (see GFAspec). If not, we raise ValueError
             with open(gfa_file, 'r', encoding='utf-8') as gfa_reader:
-                gfa_lines: list[Record] = [
-                    Record(gfa_line, gfa_type, {'ws': with_sequence}) for gfa_line in gfa_reader]
-            self.headers: list[Header] = [
-                rec for rec in gfa_lines if isinstance(rec, Header)]
-            self.segments: list[Segment] = [
-                rec for rec in gfa_lines if isinstance(rec, Segment)]
-            self.lines: list[Line] = [
-                rec for rec in gfa_lines if isinstance(rec, Line)]
-            self.containment: list[Containment] = [
-                rec for rec in gfa_lines if isinstance(rec, Containment)]
-            self.paths: list[Path] = [
-                rec for rec in gfa_lines if isinstance(rec, Path)]
-            self.walks: list[Walk] = [
-                rec for rec in gfa_lines if isinstance(rec, Walk)]
-            self.jumps: list[Jump] = [
-                rec for rec in gfa_lines if isinstance(rec, Jump)]
-            self.others: list[Other] = [
-                rec for rec in gfa_lines if isinstance(rec, Other)]
-            del gfa_lines
+                for gfa_line in gfa_reader:
+                    if not gfa_line[0].isupper() and len(gfa_line.strip()) != 0:
+                        raise ValueError(
+                            "All GFA lines shall start with a capital letter. Wrong format, please fix."
+                        )
+                    # We parse the GFA line with the record class
+                    record: Record = Record(
+                        gfa_line,
+                        gfa_type,
+                        {
+                            'ws': with_sequence
+                        }
+                    )
+                    # We put record in the right list
+                    if isinstance(record, Header):
+                        self.headers.append(record)
+                    elif isinstance(record, Segment):
+                        self.segments.append(record)
+                    elif isinstance(record, Line):
+                        self.lines.append(record)
+                    elif isinstance(record, Containment):
+                        self.containment.append(record)
+                    elif isinstance(record, Path):
+                        self.paths.append(record)
+                    elif isinstance(record, Walk):
+                        self.walks.append(record)
+                    elif isinstance(record, Jump):
+                        self.jumps.append(record)
+                    else:
+                        self.others.append(record)
 
     def __str__(self) -> str:
         return f"GFA Graph object (version {self.version.value}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)+len(self.walks)} paths."

@@ -6,7 +6,7 @@ from math import log10
 from copy import deepcopy
 from json import loads, dumps
 from itertools import chain
-from networkx import MultiDiGraph, Graph as nxGraph
+from networkx import MultiDiGraph, DiGraph
 from tharospytools import get_palette
 
 
@@ -735,15 +735,25 @@ class Graph():
             list[Line]: _description_
         """
         return [i for i, edge in enumerate(self.lines) if node ==
-                edge.datas['start'] or node == edge.datas['end']]
+                edge.datas['start'] or node == edge.datas['end']]w
+        
+    def get_most_external_nodes(self) -> list[str]:
+        """Get nodes that are on the edges of the graph (starting and ending nodes)
+        Those are characterized by their in/out degree : one of those has to be 0.
 
-    def compute_backbone(self) -> nxGraph:
+        Returns:
+            list[str]: nodes names matching the condition.
+        """
+        bone:DiGraph = self.compute_backbone()
+        return [x for x in bone.nodes() if bone.out_degree(x)==0 or bone.in_degree(x)==0]
+
+    def compute_backbone(self) -> DiGraph:
         """Computes a networkx representation of the graph, for computing purposes
 
         Returns:
-            nxGraph: a networkx graph featuring the backbone of the pangenome graph
+            DiGraph: a networkx graph featuring the backbone of the pangenome graph
         """
-        backbone: nxGraph = nxGraph()
+        backbone: DiGraph = DiGraph()
 
         for node in self.segments:
             backbone.add_node(

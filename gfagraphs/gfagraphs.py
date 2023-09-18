@@ -735,8 +735,8 @@ class Graph():
             list[Line]: _description_
         """
         return [i for i, edge in enumerate(self.lines) if node ==
-                edge.datas['start'] or node == edge.datas['end']]w
-        
+                edge.datas['start'] or node == edge.datas['end']]
+
     def get_most_external_nodes(self) -> list[str]:
         """Get nodes that are on the edges of the graph (starting and ending nodes)
         Those are characterized by their in/out degree : one of those has to be 0.
@@ -744,8 +744,8 @@ class Graph():
         Returns:
             list[str]: nodes names matching the condition.
         """
-        bone:DiGraph = self.compute_backbone()
-        return [x for x in bone.nodes() if bone.out_degree(x)==0 or bone.in_degree(x)==0]
+        bone: DiGraph = self.compute_backbone()
+        return [x for x in bone.nodes() if bone.out_degree(x) == 0 or bone.in_degree(x) == 0]
 
     def compute_backbone(self) -> DiGraph:
         """Computes a networkx representation of the graph, for computing purposes

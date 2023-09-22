@@ -809,7 +809,8 @@ class Graph():
             )
         return backbone
 
-    def compute_networkx(self, node_prefix: str | None = None) -> MultiDiGraph:
+    def compute_networkx(self, node_prefix: str | None = None, node_size_classes: tuple[list] = ([0, 1], [2, 10], [11, 50], [51, 200],
+                         [201, 500], [501, 1000], [1001, 10000], [10001, float('inf')])) -> MultiDiGraph:
         """Computes the networkx representation of the GFA.
         This function is intended to be used for graphical representation purposes, and not for computing metrics on the graph.
 
@@ -819,11 +820,10 @@ class Graph():
         Returns:
             MultiDiGraph: a networkx graph featuring the maximum of information
         """
-        limits: tuple = ([0, 1], [2, 10], [11, 50], [51, 200],
-                         [201, 500], [501, 1000], [1001, 10000], [10001, float('inf')])
         node_palette: list = get_palette(
-            len(limits), cmap_name='cool', as_hex=True)
-
+            len(node_size_classes), cmap_name='cool', as_hex=True)
+        self.colors = {f"{bound_low}-{bound_high} bp": node_palette[i]
+                       for i, (bound_low, bound_high) in enumerate(node_size_classes)}
         node_prefix = f"{node_prefix}_" if node_prefix is not None else ""
         for node in self.segments:
             node_title: list = []
@@ -836,7 +836,7 @@ class Graph():
                 f"{node_prefix}{node.datas['name']}",
                 title='\n'.join(node_title),
                 color=node_palette[[index for index, (low_limit, high_limit) in enumerate(
-                    limits) if node.datas["length"] >= low_limit and node.datas["length"] <= high_limit][0]],
+                    node_size_classes) if node.datas["length"] >= low_limit and node.datas["length"] <= high_limit][0]],
                 size=10,
                 offsets=node.datas['PO'] if 'PO' in node.datas else None,
                 sequence=node.datas.get('seq', '')
@@ -844,8 +844,8 @@ class Graph():
         palette: list = get_palette(
             len(path_list := self.get_path_list()), as_hex=True)
 
-        self.colors = {p.datas["name"]: palette[i]
-                       for i, p in enumerate(path_list)}
+        self.colors = {**self.colors, **{p.datas["name"]: palette[i]
+                       for i, p in enumerate(path_list)}}
         if len(path_list) > 0:
             visited_paths: int = 0
             for visited_path in path_list:

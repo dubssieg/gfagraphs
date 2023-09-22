@@ -216,9 +216,6 @@ def default(datas: list, gfa_style: GfaStyle, **kwargs) -> dict:
     Returns:
         dict: mapping tags:values
     """
-    if gfa_style == GfaStyle.RGFA:
-        raise ValueError(
-            f"Incompatible version format, H-lines vere added in GFA1 and were absent from {gfa_style}.")
     return supplementary_datas(datas, 0)
 
 
@@ -431,6 +428,7 @@ class Graph():
             # All lines shall start by a captial letter (see GFAspec). If not, we raise ValueError
             with open(gfa_file, 'r', encoding='utf-8') as gfa_reader:
                 for gfa_line in gfa_reader:
+
                     if not gfa_line[0].isupper() and len(gfa_line.strip()) != 0:
                         raise ValueError(
                             "All GFA lines shall start with a capital letter. Wrong format, please fix."
@@ -460,6 +458,7 @@ class Graph():
                         self.jumps.append(record)
                     else:
                         self.others.append(record)
+            # Checking GFA style
 
     def __str__(self) -> str:
         return f"GFA Graph object (version {self.version.value}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)+len(self.walks)} paths."

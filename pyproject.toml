@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gfagraphs"
-version = "0.1.73"
+version = "0.1.75"
 authors = [
   { name="Tharos", email="dubois.siegfried@gmail.com" },
 ]

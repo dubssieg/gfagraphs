@@ -822,7 +822,7 @@ class Graph():
         """
         node_palette: list = get_palette(
             len(node_size_classes), cmap_name='cool', as_hex=True)
-        self.colors = {f"{bound_low}-{bound_high} bp": node_palette[i]
+        self.colors = {f"bp{bound_low}-{bound_high}": node_palette[i]
                        for i, (bound_low, bound_high) in enumerate(node_size_classes)}
         node_prefix = f"{node_prefix}_" if node_prefix is not None else ""
         for node in self.segments:

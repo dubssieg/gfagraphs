@@ -4,7 +4,6 @@ from os import stat
 from enum import Enum
 from re import sub, match
 from typing import Callable
-from math import log10
 from copy import deepcopy
 from json import loads, dumps
 from itertools import chain
@@ -820,6 +819,11 @@ class Graph():
         Returns:
             MultiDiGraph: a networkx graph featuring the maximum of information
         """
+        limits: tuple = ([0, 1], [2, 10], [11, 50], [51, 200],
+                         [201, 500], [501, 1000], [1001, 10000], [10001, float('inf')])
+        node_palette: list = get_palette(
+            len(limits), cmap_name='cool', as_hex=True)
+
         node_prefix = f"{node_prefix}_" if node_prefix is not None else ""
         for node in self.segments:
             node_title: list = []
@@ -828,15 +832,12 @@ class Graph():
                     node_title.extend([f"{k} : {v}" for k, v in val.items()])
                 else:
                     node_title.append(f"{key} : {val}")
-            try:
-                log_size: float = log10(node.datas["length"])
-            except ValueError:
-                log_size: float = 0
             self.graph.add_node(
                 f"{node_prefix}{node.datas['name']}",
                 title='\n'.join(node_title),
-                color='darkslateblue',
-                size=10+log_size,
+                color=node_palette[[index for index, (low_limit, high_limit) in enumerate(
+                    limits) if node.datas["length"] >= low_limit and node.datas["length"] <= high_limit][0]],
+                size=10,
                 offsets=node.datas['PO'] if 'PO' in node.datas else None,
                 sequence=node.datas.get('seq', '')
             )

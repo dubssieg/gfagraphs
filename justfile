@@ -1,7 +1,5 @@
 build:
-  @rm dist/*
-  @python -m build
-  @twine upload dist/*
+  @rm dist/* && python -m build && twine upload dist/*
 
 and:
   @pip install gfagraphs --upgrade

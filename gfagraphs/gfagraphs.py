@@ -183,6 +183,9 @@ class Path():
     gfastyle: GfaStyle
     linetype: LineType
 
+    def __init__(self, name: str, chain: list[tuple], **kwargs) -> None:
+        self.datas: dict = {'name': name, 'path': chain, **kwargs}
+
 
 class Walk():
     "Empty type to define linestyle"
@@ -379,7 +382,7 @@ class Graph():
     """
     Modelizes a GFA graph
     """
-    __slots__ = ['version', 'graph', 'headers', 'segments',
+    __slots__ = ['version', 'graph', 'headers', 'segments', 'mapping',
                  'lines', 'containment', 'paths', 'walks', 'jumps', 'others', 'colors']
 
     def __init__(self, gfa_file: str | None = None, gfa_type: str = 'unknown', with_sequence: bool = False) -> None:
@@ -458,9 +461,28 @@ class Graph():
                     else:
                         self.others.append(record)
             # Checking GFA style
+        self.mapping: dict = {
+            node.datas["name"]: node.datas["seq"] for node in self.segments}
 
     def __str__(self) -> str:
         return f"GFA Graph object (version {self.version.value}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)+len(self.walks)} paths."
+
+    def get_sequence(self, name: str) -> str:
+        """BEWARE : fast, but dict needs update if an edition is made !!!
+
+        Args:
+            name (str): a node name in the graph
+        """
+        return self.mapping[name]
+
+    def add_node(self, name: str, sequence: str) -> None:
+        self.segments.append(Segment(name, sequence))
+
+    def add_edge(self, source, ori_source, sink, ori_sink) -> None:
+        self.lines.append(Line(source, ori_source, sink, ori_sink))
+
+    def add_path(self, name, chain) -> None:
+        self.paths.append(Path(name, chain))
 
     def split_segments(self, segment_name: str, future_segment_name: str | list, position_to_split: tuple | list) -> None:
         """Given a segment to split and a series/single new name(s) + position(s),

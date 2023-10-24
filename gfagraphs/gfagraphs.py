@@ -58,7 +58,7 @@ def dtype(data: object) -> str:
         return 'Z'
     else:
         try:
-            _: str = dumps(data)
+            _: str = dumps(data, indent=0, separators=(',', ':'))
             return 'J'
         except (TypeError, OverflowError) as exc:
             raise ValueError(

@@ -8,7 +8,7 @@ from copy import deepcopy
 from json import loads, dumps
 from itertools import chain
 from networkx import MultiDiGraph, DiGraph
-from tharospytools import get_palette
+from tharospytools.matplotlib_tools import get_palette
 
 
 def gtype(tag_type: str) -> type | Callable:

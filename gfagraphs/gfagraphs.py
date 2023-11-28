@@ -1,6 +1,5 @@
 "Tools to represent GFA format"
-from os.path import exists
-from os import stat
+from os import path, stat
 from enum import Enum
 from re import sub, match
 from typing import Callable
@@ -9,6 +8,60 @@ from json import loads, dumps
 from itertools import chain
 from networkx import MultiDiGraph, DiGraph
 from tharospytools.matplotlib_tools import get_palette
+
+
+def get_gfa_subtype(gfa_file_path: str | list[str]) -> str | list[str]:
+    """Given a file, or more, returns the gfa subtypes, and raises error if file is invalid or does not exists
+
+    Args:
+        gfa_file_path (str | list[str]): one or more file paths
+
+    Returns:
+        str | list[str]: a gfa subtype descriptor per input file
+    """
+    styles: list[str] = list()
+    if isinstance(gfa_file_path, str):
+        gfa_file_path = [gfa_file_path]
+    for gfa_file in gfa_file_path:
+        # Checking if path exists
+        if not path.exists(gfa_file):
+            raise OSError(
+                "Specified file does not exists. Please check provided path."
+            )
+        # Checking if file descriptor is valid
+        if not gfa_file.endswith('.gfa'):
+            raise IOError(
+                "File descriptor is invalid. Please check format, this lib is designed to work with Graphical Fragment Assembly (GFA) files."
+            )
+        # Checking if file is not empty
+        if stat(gfa_file).st_size == 0:
+            raise IOError(
+                "File is empty."
+            )
+        with open(gfa_file, 'r', encoding='utf-8') as gfa_reader:
+            header: str = gfa_reader.readline()
+            if header[0] != 'H':
+                styles.append('rGFA')
+            else:
+                try:
+                    version_number: str = supplementary_datas(
+                        header.strip('\n').split('\t'), 1
+                    )["VN"]
+                    if version_number == '1.0':
+                        styles.append('GFA1')
+                    elif version_number == '1.1':
+                        styles.append('GFA1.1')
+                    elif version_number == '1.2':
+                        styles.append('GFA1.2')
+                    elif version_number == '2.0':
+                        styles.append('GFA2')
+                    else:
+                        styles.append('unknown')
+                except KeyError:
+                    styles.append('rGFA')
+    if len(styles) == 1:
+        return styles[0]
+    return styles
 
 
 def gtype(tag_type: str) -> type | Callable:
@@ -413,7 +466,7 @@ class Graph():
         if gfa_file:
             # We try to load file from disk
             # Checking if path exists
-            if not exists(gfa_file):
+            if not path.exists(gfa_file):
                 raise OSError(
                     "Specified file does not exists. Please check provided path."
                 )
@@ -427,6 +480,7 @@ class Graph():
                 raise IOError(
                     "File is empty."
                 )
+
             # All lines shall start by a captial letter (see GFAspec). If not, we raise ValueError
             with open(gfa_file, 'r', encoding='utf-8') as gfa_reader:
                 for gfa_line in gfa_reader:
@@ -438,7 +492,7 @@ class Graph():
                     # We parse the GFA line with the record class
                     record: Record = Record(
                         gfa_line,
-                        gfa_type,
+                        self.version.value,
                         {
                             'ws': with_sequence
                         }
@@ -446,6 +500,22 @@ class Graph():
                     # We put record in the right list
                     if isinstance(record, Header):
                         self.headers.append(record)
+                        try:
+                            version_number: str = supplementary_datas(
+                                gfa_line.strip('\n').split('\t'), 1
+                            )["VN"]
+                            if version_number == '1.0':
+                                self.version = GfaStyle('GFA1')
+                            elif version_number == '1.1':
+                                self.version = GfaStyle('GFA1.1')
+                            elif version_number == '1.2':
+                                self.version = GfaStyle('GFA1.2')
+                            elif version_number == '2.0':
+                                self.version = GfaStyle('GFA2')
+                            else:
+                                self.version = GfaStyle('unknown')
+                        except KeyError:
+                            self.version = GfaStyle('rGFA')
                     elif isinstance(record, Segment):
                         self.segments.append(record)
                     elif isinstance(record, Line):

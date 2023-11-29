@@ -1,7 +1,6 @@
 "Modelizes a graph object"
 from pgGraphs.abstractions import GFALine, Orientation
 from pgGraphs.gfaparser import GFAParser
-from pgGraphs.io import GFAIO
 
 
 class Graph():
@@ -72,7 +71,7 @@ class Graph():
         Args:
             output_file (str): path where to output the graph
         """
-        GFAIO.save_graph(self, output_path=output_file)
+        GFAParser.save_graph(self, output_path=output_file)
 
 ################################################# ADD ELEMNTS TO GRAPH #################################################
 

@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 from setuptools import setup, find_packages
 from subprocess import run, PIPE
-from __namespace__ import *
 from sys import version_info, stderr
 from setuptools import setup
 from pkg_resources import require
 from sys import argv
 
-# Getting requirements
-with open("requirements.txt", 'r', encoding='utf-8') as rreader:
-    requirements: list[str] = [x.strip() for x in rreader.readlines()]
-
-# Get remote URL
-_url: str = run(['git', 'config', '--get', 'remote.origin.url'],
-                stdout=PIPE).stdout.decode(encoding='utf-8').strip()
+NAME: str = "gfagraphs"
+AUTHOR: str = "Siegfried Dubois",
+AUTHOR_EMAIL: str = "siegfried.dubois@inria.fr",
+LICENCE: str = "LICENCE"
+DESCRIPTION: str = "Library to parse, edit and handle in memory GFA graphs"
+REQUIRED_PYTHON: tuple = (3, 10)
+OVERRIDE_VN: bool = False
+VN: str = "0.2.0"
+URL: str = "https://github.com/Tharos-ux/gfagraphs"
+REQUIREMENTS: list[str] = ['networkx', 'tharos-pytools']
 
 
 if argv[1] in ('install', 'sdist', 'bdist_wheel'):
@@ -58,32 +60,24 @@ if argv[1] in ('install', 'sdist', 'bdist_wheel'):
     ]
 
     [project.urls]
-    "Homepage" = "{_url}"
-    "Bug Tracker" = "{_url}/issues"
+    "Homepage" = "{URL}"
+    "Bug Tracker" = "{URL}/issues"
     """
         )
 else:
     _iv: str = VN if OVERRIDE_VN else require(NAME)[0].version
-
-# Additionnal parameters
-_adp: dict = {}
-if HAS_COMMAND_LINE:
-    _adp['entry_points'] = COMMAND
-
 
 # Install procedure
 setup(
     name=NAME,
     version=_iv,
     description=DESCRIPTION,
-    url=_url,
+    url=URL,
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
-    license=LICENCE,
     zip_safe=False,
     packages=find_packages(),
-    install_requires=requirements,
+    install_requires=REQUIREMENTS,
     long_description=open("README.md", encoding='utf-8').read(),
     long_description_content_type='text/markdown',
-    **_adp
 )

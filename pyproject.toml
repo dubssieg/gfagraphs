@@ -1,22 +1,23 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+    requires = ["setuptools>=61.0"]
+    build-backend = "setuptools.build_meta"
 
-[project]
-name = "gfagraphs"
-version = "0.2.0"
-authors = [
-  { name="Tharos", email="dubois.siegfried@gmail.com" },
-]
-description = "Package that packs some utility functions."
-readme = "README.md"
-requires-python = ">=3.10"
-classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent",
-]
+    [project]
+    name = "gfagraphs"
+    version = "0.2.0"
+    authors = [
+    { name="Siegfried Dubois", email="siegfried.dubois@inria.fr" },
+    ]
+    description = "Library to parse, edit and handle in memory GFA graphs"
+    readme = "README.md"
+    requires-python = ">=3.10"
+    classifiers = [
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+    ]
 
-[project.urls]
-"Homepage" = "https://github.com/Tharos-ux/gfatypes"
-"Bug Tracker" = "https://github.com/Tharos-ux/gfatypes/issues"
+    [project.urls]
+    "Homepage" = "https://github.com/Tharos-ux/gfagraphs"
+    "Bug Tracker" = "https://github.com/Tharos-ux/gfagraphs/issues"
+    

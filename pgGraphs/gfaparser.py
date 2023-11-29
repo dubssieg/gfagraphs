@@ -1,4 +1,4 @@
-""
+"Abstract class for parsing and saving GFA file format"
 from re import match, sub
 from typing import Callable
 from json import loads, dumps

@@ -1,3 +1,4 @@
+"Abstract class for visualization and modelization of GFA in a NetworkX object"
 from networkx import MultiDiGraph, DiGraph
 from pgGraphs.graph import Graph
 from tharospytools.matplotlib_tools import get_palette

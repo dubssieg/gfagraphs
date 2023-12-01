@@ -337,3 +337,35 @@ class Graph():
             # We go backwards to dodge index collisions
             for pos in positions:
                 path['path'][pos:pos-len(segs)+1] = [merge_name]
+
+############### POsitionnal tag ###############
+
+    def sequence_offsets(self) -> None:
+        """
+            Calculates the offsets within each path for each node
+            Here, we aim to extend the current GFA tag format by adding tags
+            that do respect the GFA naming convention.
+            A JSON string, PO (Path Offset) positions, relative to paths.
+            Hence, PO:J:{'w1':[(334,335,'+')],'w2':[(245,247,'-')]} tells that the walk/path w1
+            contains the sequence starting at position 334 and ending at position 335,
+            and the walk/path w2 contains the sequence starting at the offset 245 (ending 247),
+            and that the sequences are reversed one to each other.
+            Note that any non-referenced walk in this field means that the node
+            is not inside the given walk.
+        """
+        for walk_name, walk_datas in self.paths.items():
+            start_offset: int = int(
+                walk_datas['start_offset']) if 'start_offset' in walk_datas.keys() else 0
+            for node, vect in walk_datas["path"]:
+                if 'PO' not in self.segments[node]:
+                    self.segments[node]['PO']: dict[str,
+                                                    list[tuple[int, int, Orientation]]] = dict()
+                if walk_name in self.segments[node]['PO']:
+                    # We already encountered the node in this path
+                    self.segments[node]['PO'][walk_name].append(
+                        (start_offset, start_offset+self.segments[node]['length'], vect.value))
+                else:
+                    # First time we encounter this node for this path
+                    self.segments[node]['PO'][walk_name] = [
+                        (start_offset, start_offset+self.segments[node]['length'], vect.value)]
+                start_offset += self.segments[node]['length']

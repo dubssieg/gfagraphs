@@ -1,5 +1,6 @@
 "Tools to represent GFA format"
-from os import path, stat
+from os import stat
+from os.path import exists
 from enum import Enum
 from re import sub, match
 from typing import Callable
@@ -24,7 +25,7 @@ def get_gfa_subtype(gfa_file_path: str | list[str]) -> str | list[str]:
         gfa_file_path = [gfa_file_path]
     for gfa_file in gfa_file_path:
         # Checking if path exists
-        if not path.exists(gfa_file):
+        if not exists(gfa_file):
             raise OSError(
                 "Specified file does not exists. Please check provided path."
             )
@@ -466,7 +467,7 @@ class Graph():
         if gfa_file:
             # We try to load file from disk
             # Checking if path exists
-            if not path.exists(gfa_file):
+            if not exists(gfa_file):
                 raise OSError(
                     "Specified file does not exists. Please check provided path."
                 )

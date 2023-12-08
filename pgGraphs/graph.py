@@ -44,7 +44,7 @@ class Graph():
                         )
 
                     name, line_type, datas = GFAParser.read_gfa_line(
-                        gfa_line.split(), with_sequence)
+                        gfa_line.split('\t'), with_sequence)
                     match line_type:
                         case GFALine.SEGMENT:
                             self.segments[name] = datas
@@ -340,7 +340,7 @@ class Graph():
 
 ############### POsitionnal tag ###############
 
-    def sequence_offsets(self) -> None:
+    def sequence_offsets(self, recalculate: bool = False) -> None:
         """
             Calculates the offsets within each path for each node
             Here, we aim to extend the current GFA tag format by adding tags
@@ -353,19 +353,21 @@ class Graph():
             Note that any non-referenced walk in this field means that the node
             is not inside the given walk.
         """
-        for walk_name, walk_datas in self.paths.items():
-            start_offset: int = int(
-                walk_datas['start_offset']) if 'start_offset' in walk_datas.keys() else 0
-            for node, vect in walk_datas["path"]:
-                if 'PO' not in self.segments[node]:
-                    self.segments[node]['PO']: dict[str,
-                                                    list[tuple[int, int, Orientation]]] = dict()
-                if walk_name in self.segments[node]['PO']:
-                    # We already encountered the node in this path
-                    self.segments[node]['PO'][walk_name].append(
-                        (start_offset, start_offset+self.segments[node]['length'], vect.value))
-                else:
-                    # First time we encounter this node for this path
-                    self.segments[node]['PO'][walk_name] = [
-                        (start_offset, start_offset+self.segments[node]['length'], vect.value)]
-                start_offset += self.segments[node]['length']
+        if not 'PO' in self.metadata or recalculate:
+            for walk_name, walk_datas in self.paths.items():
+                start_offset: int = int(
+                    walk_datas['start_offset']) if 'start_offset' in walk_datas.keys() and isinstance(walk_datas['start_offset'], int) is None else 0
+                for node, vect in walk_datas["path"]:
+                    if 'PO' not in self.segments[node]:
+                        self.segments[node]['PO']: dict[str,
+                                                        list[tuple[int, int, Orientation]]] = dict()
+                    if walk_name in self.segments[node]['PO']:
+                        # We already encountered the node in this path
+                        self.segments[node]['PO'][walk_name].append(
+                            (start_offset, start_offset+self.segments[node]['length'], vect.value))
+                    else:
+                        # First time we encounter this node for this path
+                        self.segments[node]['PO'][walk_name] = [
+                            (start_offset, start_offset+self.segments[node]['length'], vect.value)]
+                    start_offset += self.segments[node]['length']
+        self.metadata['PO'] = True

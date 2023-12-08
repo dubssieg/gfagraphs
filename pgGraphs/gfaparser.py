@@ -107,6 +107,25 @@ class GFAParser:
             f"Type identifier {tag_type} is not in the GFA standard")
 
     @staticmethod
+    def set_gfa_type(tag_type: str) -> type | Callable:
+        """Interprets tags of GFA as a Python-compatible format
+
+        Args:
+            tag_type (str): the letter that identifies the GFA data type
+
+        Raises:
+            NotImplementedError: happens if its an array or byte array (needs doc)
+            ValueError: happens if format is not in GFA standards
+
+        Returns:
+            type | Callable: the cast method or type to apply
+        """
+        if tag_type == 'J':
+            return dumps
+        else:
+            return str
+
+    @staticmethod
     def get_python_type(data: object) -> str:
         """Interprets tags of GFA as a Python-compatible format
 
@@ -224,16 +243,16 @@ class GFAParser:
             if graph.headers:
                 for header in graph.headers:
                     gfa_writer.write(
-                        "H\t"+'\t'.join([f"{key}:{GFAParser.get_python_type(value)}:{value}" if not key.startswith('ARG') else str(value) for key, value in header.items()])+"\n")
+                        "H\t"+'\t'.join([f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in header.items()])+"\n")
             if graph.segments:
                 for segment_name, segment_datas in graph.segments.items():
                     gfa_writer.write("S\t"+f"{segment_name}\t{segment_datas['seq'] if 'seq' in segment_datas else 'N'*segment_datas['length']}\t" + '\t'.join(
-                        [f"{key}:{GFAParser.get_python_type(value)}:{value}" if not key.startswith('ARG') else str(value) for key, value in segment_datas.items() if key not in ['length', 'seq']])+"\n")
+                        [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in segment_datas.items() if key not in ['length', 'seq']])+"\n")
             if graph.lines:
-                for line in graph.lines:
+                for line in graph.lines.values():
                     ori1, ori2 = line['orientation'].split('/')
                     gfa_writer.write(f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t" + '\t'.join(
-                        [f"{key}:{GFAParser.get_python_type(value)}:{value}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])+"\n")
+                        [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])+"\n")
             if graph.paths:
                 for path_name, path_datas in graph.paths.items():
                     if graph.metadata['version'] == GFAFormat.GFA1:  # P-line
@@ -245,5 +264,5 @@ class GFAParser:
                         offset_stop: int | str = path_datas['stop_offset'] if 'stop_offset' in path_datas else '?'
                         strpath: str = ''.join(
                             [f"{'>' if orient == Orientation.FORWARD else '<'}{node_name}" for node_name, orient in path_datas['path']])
-                        return f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas else line_number}\t{path_datas['name']}\t{offset_start}\t{offset_stop}\t{strpath}\t*\n"
+                        return f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas else line_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}\t*\n"
                     line_number += 1

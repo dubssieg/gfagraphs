@@ -87,13 +87,14 @@ class Graph():
                 "Function is not implemented for graphs without paths.")
         number_of_nodes: int = len(self.segments)
         for path_datas in self.paths.values():
+            iters: int = 0
             encountered: dict = {}
             for i, (node, oriT) in enumerate(path_datas['path']):
                 # Getting the number of times we've see this node, then storing it
                 encountered[node] = encountered.get(node, 0)+1
-                if (iter := encountered.get(node, 1)-1):
+                if encountered.get(node, 1)-1:
                     # Node has been seen more than one time!
-                    new_name: str = str(number_of_nodes+int(node)+iter)
+                    new_name: str = str(number_of_nodes+iters)
                     # Adding new node
                     self.add_node(
                         name=new_name,
@@ -113,6 +114,8 @@ class Graph():
                     except:
                         # Will happen if loop at first position in the graph (that would not happen normally)
                         pass
+                    finally:
+                        iters += 1
 
         # If we did calculate positions, those are not accurate anymore, needs recomputing
         if 'PO' in self.metadata:
@@ -120,7 +123,6 @@ class Graph():
 
 
 ################################################# ADD ELEMNTS TO GRAPH #################################################
-
 
     def add_node(
         self,

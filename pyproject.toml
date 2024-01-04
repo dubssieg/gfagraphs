@@ -4,7 +4,7 @@
 
     [project]
     name = "gfagraphs"
-    version = "0.2.9"
+    version = "0.2.10"
     authors = [
     { name="Siegfried Dubois", email="siegfried.dubois@inria.fr" },
     ]

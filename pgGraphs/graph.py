@@ -73,7 +73,54 @@ class Graph():
         """
         GFAParser.save_graph(self, output_path=output_file)
 
+################################################# EDIT CYCLES #################################################
+
+    def unfold(
+        self
+    ) -> None:
+        """Applies an unfolding on cycles, that allows them to be linearized
+        WARNING: May solely be used on graphs with paths.
+        WARNING: Not fully tested yet, use at your own discretion.
+        """
+        if len(self.paths) == 0:
+            raise NotImplementedError(
+                "Function is not implemented for graphs without paths.")
+        number_of_nodes: int = len(self.segments)
+        for path_datas in self.paths.values():
+            encountered: dict = {}
+            for i, (node, oriT) in enumerate(path_datas['path']):
+                # Getting the number of times we've see this node, then storing it
+                encountered[node] = encountered.get(node, 0)+1
+                if (iter := encountered.get(node, 1)-1):
+                    # Node has been seen more than one time!
+                    new_name: str = str(number_of_nodes+int(node)+iter)
+                    # Adding new node
+                    self.add_node(
+                        name=new_name,
+                        sequence=self.segments[node]['seq'],
+                        metadata=self.segments[node]
+                    )
+                    # Renaming in path
+                    path_datas['path'][i][0] = new_name
+                    # We need to add new edge
+                    try:
+                        self.add_edge(
+                            source=path_datas['path'][i-1][0],
+                            ori_source=path_datas['path'][i-1][1],
+                            sink=new_name,
+                            ori_sink=oriT
+                        )
+                    except:
+                        # Will happen if loop at first position in the graph (that would not happen normally)
+                        pass
+
+        # If we did calculate positions, those are not accurate anymore, needs recomputing
+        if 'PO' in self.metadata:
+            self.sequence_offsets(recalculate=True)
+
+
 ################################################# ADD ELEMNTS TO GRAPH #################################################
+
 
     def add_node(
         self,
@@ -102,7 +149,7 @@ class Graph():
         ori_sink: str,
         **metadata: dict
     ) -> None:
-        """_summary_
+        """Applies the addition of an edge to the current graph
 
         Args:
             source (str): name of source node

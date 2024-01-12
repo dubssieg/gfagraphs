@@ -5,6 +5,7 @@ from json import loads, dumps
 from os import path, stat
 from tharospytools.path_tools import path_allocator
 from pgGraphs.abstractions import Orientation, GFALine, GFAFormat
+from gzip import open as gz_open
 
 
 class GFAParser:
@@ -45,7 +46,7 @@ class GFAParser:
                     "Specified file does not exists. Please check provided path."
                 )
             # Checking if file descriptor is valid
-            if not gfa_file.endswith('.gfa'):
+            if not gfa_file.endswith('.gfa') and not gfa_file.endswith('.gfa.gz'):
                 raise IOError(
                     "File descriptor is invalid. Please check format, this lib is designed to work with Graphical Fragment Assembly (GFA) files."
                 )
@@ -54,7 +55,8 @@ class GFAParser:
                 raise IOError(
                     "File is empty."
                 )
-            with open(gfa_file, 'r', encoding='utf-8') as gfa_reader:
+
+            with open(gfa_file, 'r', encoding='utf-8') if gfa_file.endswith('.gfa') else gz_open(gfa_file, 'rt') as gfa_reader:
                 header: str = gfa_reader.readline()
                 if header[0] != 'H':
                     styles.append('rGFA')
@@ -251,7 +253,7 @@ class GFAParser:
             if graph.lines:
                 for line in graph.lines.values():
                     ori1, ori2 = line['orientation'].split('/')
-                    gfa_writer.write(f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t" + '\t'.join(
+                    gfa_writer.write(f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t*\t" + '\t'.join(
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])+"\n")
             if graph.paths:
                 for path_name, path_datas in graph.paths.items():
@@ -263,6 +265,7 @@ class GFAParser:
                         offset_start: int | str = path_datas['start_offset'] if 'start_offset' in path_datas else '?'
                         offset_stop: int | str = path_datas['stop_offset'] if 'stop_offset' in path_datas else '?'
                         strpath: str = ''.join(
-                            [f"{'>' if orient == Orientation.FORWARD else '<'}{node_name}" for node_name, orient in path_datas['path']])
-                        return f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas else line_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}\t*\n"
+                            [f"{'>' if orient == Orientation.FORWARD or orient == '+' else '<'}{node_name}" for node_name, orient in path_datas['path']])
+                        gfa_writer.write(
+                            f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas else line_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}\t*\n")
                     line_number += 1

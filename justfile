@@ -6,3 +6,6 @@ and:
 
 run:
   @pip install gfagraphs --upgrade
+
+local:
+  @python -m pip install .

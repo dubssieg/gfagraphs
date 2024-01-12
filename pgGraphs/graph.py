@@ -1,6 +1,8 @@
 "Modelizes a graph object"
+from itertools import count
 from pgGraphs.abstractions import GFALine, Orientation
 from pgGraphs.gfaparser import GFAParser
+from gzip import open as gz_open
 
 
 class Graph():
@@ -25,17 +27,19 @@ class Graph():
         Raises:
             ValueError: A line does not start with a capital letter
         """
-        # Declaring format attributes
-        self.metadata: dict = {'version': GFAParser.get_gfa_format(
-            gfa_file_path=gfa_file) if gfa_file else 'unknown'}
+        # Declaring format attributes, generators...
+        self.metadata: dict = {
+            'version': GFAParser.get_gfa_format(gfa_file_path=gfa_file) if gfa_file else 'unknown',
+            'next_node_name': (x for x in count(start=1) if str(x) not in self.segments)
+        }
         self.segments: dict[str, dict] = {}
         self.lines: dict[tuple[str, str], dict] = {}
         self.paths: dict[str, dict] = {}
         self.headers: list[dict] = []
 
         # Parsing the gfa file
-        if gfa_file:
-            with open(gfa_file, 'r', encoding='utf-8') as gfa_reader:
+        if gfa_file and (gfa_file.endswith('.gfa') or gfa_file.endswith('.gfa.gz')):
+            with open(gfa_file, 'r', encoding='utf-8') if gfa_file.endswith('.gfa') else gz_open(gfa_file, 'rt') as gfa_reader:
                 for gfa_line in gfa_reader:
 
                     if not gfa_line[0].isupper() and len(gfa_line.strip()) != 0:
@@ -44,7 +48,9 @@ class Graph():
                         )
 
                     name, line_type, datas = GFAParser.read_gfa_line(
-                        gfa_line.split('\t'), with_sequence)
+                        [__.strip() for __ in gfa_line.split('\t')],
+                        with_sequence
+                    )
                     match line_type:
                         case GFALine.SEGMENT:
                             self.segments[name] = datas
@@ -420,3 +426,17 @@ class Graph():
                             (start_offset, start_offset+self.segments[node]['length'], vect.value)]
                     start_offset += self.segments[node]['length']
         self.metadata['PO'] = True
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc_info) -> None:
+        del self
+
+    def get_free_node_name(self) -> str:
+        """Asks the generator for the next available node name
+
+        Returns:
+            str: an available node name
+        """
+        return str(next(self.metadata['next_node_name']))

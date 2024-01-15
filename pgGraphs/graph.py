@@ -17,7 +17,12 @@ class Graph():
         'metadata'
     ]
 
-    def __init__(self, gfa_file: str | None = None, with_sequence: bool = True) -> None:
+    def __init__(
+        self,
+        gfa_file: str | None = None,
+        with_sequence: bool = True,
+        low_memory: bool = False
+    ) -> None:
         """Constructor for GFA Graph object.
 
         Args:
@@ -29,8 +34,8 @@ class Graph():
         """
         # Declaring format attributes, generators...
         self.metadata: dict = {
-            'version': GFAParser.get_gfa_format(gfa_file_path=gfa_file) if gfa_file else 'unknown',
-            'next_node_name': (x for x in count(start=1) if str(x) not in self.segments)
+            'version': GFAParser.get_gfa_format(gfa_file_path=gfa_file) if gfa_file and not low_memory else 'unknown',
+            'next_node_name': (x for x in count(start=1) if str(x) not in self.segments) if not low_memory else 'unknown'
         }
         self.segments: dict[str, dict] = {}
         self.lines: dict[tuple[str, str], dict] = {}
@@ -49,7 +54,7 @@ class Graph():
 
                     name, line_type, datas = GFAParser.read_gfa_line(
                         [__.strip() for __ in gfa_line.split('\t')],
-                        with_sequence
+                        with_sequence and not low_memory
                     )
                     match line_type:
                         case GFALine.SEGMENT:
@@ -87,6 +92,7 @@ class Graph():
         """Applies an unfolding on cycles, that allows them to be linearized
         WARNING: May solely be used on graphs with paths.
         WARNING: Not fully tested yet, use at your own discretion.
+        TODO: fix closing edge of cycle not destroyed.
         """
         if len(self.paths) == 0:
             raise NotImplementedError(
@@ -118,7 +124,7 @@ class Graph():
                             ori_sink=oriT
                         )
                     except:
-                        # Will happen if loop at first position in the graph (that would not happen normally)
+                        # Will happen if loop at first position in the graph (that would not happen normally, right?)
                         pass
                     finally:
                         iters += 1

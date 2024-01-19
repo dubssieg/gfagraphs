@@ -179,7 +179,7 @@ class GFAParser:
         return mapping
 
     @staticmethod
-    def read_gfa_line(datas: list[str], load_sequence_in_memory: bool = True) -> tuple[str, GFALine, dict]:
+    def read_gfa_line(datas: list[str], load_sequence_in_memory: bool = True, exclude_end_path_pattern: str = "") -> tuple[str, GFALine, dict]:
         """Calls methods to parse a GFA line,
         accordingly to it's fields described in the GFAspec github.
 
@@ -203,7 +203,8 @@ class GFAParser:
                 line_datas["orientation"] = f"{datas[2]}/{datas[4]}"
                 return ((line_datas['start'], line_datas['end']), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
             case GFALine.WALK:
-                line_datas["id"] = datas[3]
+                line_datas["id"] = (datas[3].upper(), datas[3].upper()[
+                                    :-len(exclude_end_path_pattern)])[datas[3].upper().endswith(exclude_end_path_pattern)]
                 line_datas["origin"] = int(datas[2])
                 line_datas["start_offset"] = datas[4]
                 line_datas["stop_offset"] = datas[5]
@@ -216,7 +217,8 @@ class GFAParser:
                 ]
                 return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
             case GFALine.PATH:
-                line_datas["id"] = datas[1]
+                line_datas["id"] = (datas[1].upper(), datas[1].upper()[
+                                    :-len(exclude_end_path_pattern)])[datas[1].upper().endswith(exclude_end_path_pattern)]
                 line_datas["origin"] = None
                 line_datas["start_offset"] = None
                 line_datas["stop_offset"] = None

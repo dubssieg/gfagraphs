@@ -22,7 +22,7 @@ class Graph():
         gfa_file: str | None = None,
         with_sequence: bool = True,
         low_memory: bool = False,
-        end_pattern_exclusion: str = ""
+        regexp: str = ".*",
     ) -> None:
         """Constructor for GFA Graph object.
 
@@ -56,7 +56,7 @@ class Graph():
                     name, line_type, datas = GFAParser.read_gfa_line(
                         datas=[__.strip() for __ in gfa_line.split('\t')],
                         load_sequence_in_memory=with_sequence and not low_memory,
-                        exclude_end_path_pattern=end_pattern_exclusion,
+                        regexp_pattern=regexp,
                     )
                     match line_type:
                         case GFALine.SEGMENT:

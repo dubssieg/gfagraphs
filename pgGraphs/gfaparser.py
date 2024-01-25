@@ -215,10 +215,10 @@ class GFAParser:
                     )
                     for node in datas[6].replace('>', ',+').replace('<', ',-')[1:].split(',')
                 ]
-                return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
+                return ((datas[1].upper(), datas[1].upper()[:-len(exclude_end_path_pattern)])[datas[1].upper().endswith(exclude_end_path_pattern)], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
             case GFALine.PATH:
-                line_datas["id"] = (datas[1].upper(), datas[1].upper()[
-                                    :-len(exclude_end_path_pattern)])[datas[1].upper().endswith(exclude_end_path_pattern)]
+                line_datas["id"] = (datas[1].upper(), datas[1][
+                                    :-len(exclude_end_path_pattern)].upper())[datas[1].upper().endswith(exclude_end_path_pattern)]
                 line_datas["origin"] = None
                 line_datas["start_offset"] = None
                 line_datas["stop_offset"] = None
@@ -229,7 +229,7 @@ class GFAParser:
                     )
                     for node in datas[2].split(',')
                 ]
-                return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
+                return (line_datas["id"], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
             case GFALine.HEADER | GFALine.ANY:
                 return (None, line_type, GFAParser.supplementary_datas(datas, 1))
 

@@ -204,6 +204,7 @@ class GFAParser:
                 line_datas["orientation"] = f"{datas[2]}/{datas[4]}"
                 return ((line_datas['start'], line_datas['end']), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
             case GFALine.WALK:
+                line_datas["name"] = datas[1]
                 line_datas["id"] = datas[3]
                 line_datas["origin"] = int(datas[2])
                 line_datas["start_offset"] = datas[4]
@@ -217,11 +218,12 @@ class GFAParser:
                 ]
                 try:
                     label: str = search(
-                        regexp_pattern, datas[1]).group(1).upper()
+                        regexp_pattern, datas[3]).group(1).upper()
                 except:
-                    label: str = datas[1].upper()
+                    label: str = datas[3].upper()
                 return (label, line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
             case GFALine.PATH:
+                line_datas["name"] = None
                 line_datas["id"] = datas[1]
                 line_datas["origin"] = None
                 line_datas["start_offset"] = None

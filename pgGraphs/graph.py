@@ -3,6 +3,7 @@ from itertools import count
 from pgGraphs.abstractions import GFALine, Orientation
 from pgGraphs.gfaparser import GFAParser
 from gzip import open as gz_open
+from tharospytools.multithreading import futures_collector
 
 
 class Graph():
@@ -404,6 +405,81 @@ class Graph():
 
 ############### POsitionnal tag ###############
 
+    def compute_child_nodes(self) -> None:
+        """
+        For each edge in the graph, annotates extruding nodes from the edges info
+        """
+        for node in self.segments.keys():
+            self.segments[node]['successors'] = set()  # set[str]
+        for from_node, to_node in self.lines.keys():
+            self.segments[from_node]['successors'].add(to_node)
+
+    def global_offset(self, reference: str, threads: int = 1) -> None:
+        """We want to create a global offset (GO) for each node, which consists
+        in the positions the sequences would have if they were represented as a left-normalized multiple alignement, with gaps.
+        Positions are stored in the segments, with the "GO" tag.
+        Warning: if reference has loops, positions are going to be ambiguous.
+        Moreover, in this first version, only one coordinate per node is assigned, meaning loops wont be annotated twice.
+        As of now function is NOT RECOMMANDED to use fo production.
+        This fonction is RECURSIVE and will FAIL on HUGE GRAPHS.
+
+        Args:
+            reference (str): the path used for annotations
+        """
+        # We pre-compute successors of nodes for easy walks in the graph
+        self.compute_child_nodes()
+
+        # We create list of nodes we shall investigate from
+        ref_path: list[str] = [x for x, _ in self.paths[reference]['path']]
+
+        # We initialize all positions for all nodes to 0
+        for seg in self.segments.keys():
+            self.segments[seg]['GO'] = [0, 0]  # list[int, int]
+
+        def start_recursion(node_name: str, current_coord: int, thread_name: str = 't0'):
+            for seg in self.segments.keys():
+                self.segments[seg][thread_name] = False
+            explore(node_name=node_name, current_coord=current_coord,
+                    thread_name=thread_name)
+            for seg in self.segments.keys():
+                del self.segments[seg][thread_name]
+
+        def explore(node_name: str, current_coord: int, thread_name: str) -> None:
+            """Recursive function that is guided by the net to explore all nodes in graph and annotates them
+
+            Args:
+                node_name (str): current node we're looking at
+                current_coord (int): endpoint of the previous node
+            """
+            self.segments[node_name]['GO'][0] = max(
+                self.segments[node_name]['GO'][0], current_coord)
+            self.segments[node_name]['GO'][1] = self.segments[node_name]['GO'][0] + \
+                self.segments[node_name]['length']
+
+            for successor_name in self.segments[node_name]['successors']:
+                # Node as already been visited or is in reference, we end recursion
+                if self.segments[successor_name][thread_name] or successor_name in ref_path:
+                    self.segments[successor_name]['GO'][0] = max(
+                        self.segments[successor_name]['GO'][0], current_coord)+self.segments[node_name]['length']
+                    self.segments[successor_name]['GO'][1] = self.segments[successor_name]['GO'][0] + \
+                        self.segments[successor_name]['length']
+                # Node is reachable, has not been visited yet, and is not in reference.
+                else:
+                    explore(successor_name,
+                            self.segments[node_name]['GO'][1], thread_name)
+
+        # Recursion loop over successive reference nodes
+        futures_collector(
+            func=start_recursion,
+            argslist=[
+                (seg, self.segments[seg]['GO'][1]) for seg in ref_path
+            ],
+            kwargslist=[
+                {'thread_name': f't{i}'} for i in range(len(ref_path))
+            ],
+            num_processes=threads,
+        )
+
     def sequence_offsets(self, recalculate: bool = False) -> None:
         """
             Calculates the offsets within each path for each node
@@ -423,8 +499,8 @@ class Graph():
                     walk_datas['start_offset']) if 'start_offset' in walk_datas.keys() and isinstance(walk_datas['start_offset'], int) is None else 0
                 for node, vect in walk_datas["path"]:
                     if 'PO' not in self.segments[node]:
-                        self.segments[node]['PO']: dict[str,
-                                                        list[tuple[int, int, Orientation]]] = dict()
+                        # dict[str,list[tuple[int, int, Orientation]]]
+                        self.segments[node]['PO'] = dict()
                     if walk_name in self.segments[node]['PO']:
                         # We already encountered the node in this path
                         self.segments[node]['PO'][walk_name].append(

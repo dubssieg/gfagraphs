@@ -7,6 +7,7 @@ class Orientation(Enum):
     FORWARD = '+'
     REVERSE = '-'
     ANY = '?'
+    BOTH = '='
 
 
 class GFAFormat(Enum):

@@ -154,7 +154,7 @@ class GFAParser:
                 return 'J'
             except (TypeError, OverflowError) as exc:
                 raise ValueError(
-                    f"Type {type(data)} is not in the GFA standard") from exc
+                    f"Data {data} of type {type(data)} is not in the GFA standard") from exc
 
     @staticmethod
     def supplementary_datas(datas: list, length_condition: int) -> dict:
@@ -206,7 +206,7 @@ class GFAParser:
             case GFALine.WALK:
                 line_datas["name"] = datas[1]
                 line_datas["id"] = datas[3]
-                line_datas["origin"] = int(datas[2])
+                line_datas["origin"] = datas[2]
                 line_datas["start_offset"] = datas[4]
                 line_datas["stop_offset"] = datas[5]
                 line_datas["path"] = [
@@ -265,14 +265,18 @@ class GFAParser:
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in segment_datas.items() if key not in ['length', 'seq']])+"\n")
             if graph.lines:
                 for line in graph.lines.values():
-                    ori1, ori2 = line['orientation'].split('/')
-                    gfa_writer.write(f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t*\t" + '\t'.join(
-                        [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])+"\n")
+                    # We accomodate for all alternatives orientation versions that are described in the input graph file to be written back
+                    all_alternates = line.pop(
+                        'alternates', []) + line['orientation']
+                    for alt in all_alternates:
+                        ori1, ori2 = alt.split('/')
+                        gfa_writer.write(f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t0M\t" + '\t'.join(
+                            [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])+"\n")
             if graph.paths:
                 for path_name, path_datas in graph.paths.items():
                     if graph.metadata['version'] == GFAFormat.GFA1:  # P-line
                         gfa_writer.write(
-                            f"P\t{path_name}\t{','.join([node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])}\t*")
+                            f"P\t{path_name}\t{','.join([node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])}\n")
                     else:
                         # W-line
                         offset_start: int | str = path_datas['start_offset'] if 'start_offset' in path_datas else '?'
@@ -280,5 +284,44 @@ class GFAParser:
                         strpath: str = ''.join(
                             [f"{'>' if orient == Orientation.FORWARD or orient == '+' else '<'}{node_name}" for node_name, orient in path_datas['path']])
                         gfa_writer.write(
-                            f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas else line_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}\t*\n")
+                            f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas else line_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}\n")
+                    line_number += 1
+
+    @staticmethod
+    def save_light_graph(graph, output_path: str) -> None:
+        """Given a gfa Graph object, saves to a valid gfa file the Graph.
+
+        Args:
+            output_path (str): a path on disk where to save
+            output_format (GfaStyle): a format to choose for output.
+                if None, default graph format will be used.
+        """
+        line_number: int = 0
+        with open(path_allocator(output_path), 'w', encoding='utf-8') as gfa_writer:
+            if graph.headers:
+                for header in graph.headers:
+                    gfa_writer.write(
+                        "H\t"+'\t'.join([f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in header.items()])+"\n")
+            if graph.segments:
+                for segment_name, segment_datas in graph.segments.items():
+                    gfa_writer.write(
+                        "S\t"+f"{segment_name}\t{segment_datas['seq'] if 'seq' in segment_datas else 'N'*segment_datas['length']}\n")
+            if graph.lines:
+                for line in graph.lines.values():
+                    ori1, ori2 = line['orientation'].split('/')
+                    gfa_writer.write(
+                        f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t0M\n")
+            if graph.paths:
+                for path_name, path_datas in graph.paths.items():
+                    if graph.metadata['version'] == GFAFormat.GFA1:  # P-line
+                        gfa_writer.write(
+                            f"P\t{path_name}\t{','.join([node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])}\n")
+                    else:
+                        # W-line
+                        offset_start: int | str = path_datas['start_offset'] if 'start_offset' in path_datas else '?'
+                        offset_stop: int | str = path_datas['stop_offset'] if 'stop_offset' in path_datas else '?'
+                        strpath: str = ''.join(
+                            [f"{'>' if orient == Orientation.FORWARD or orient == '+' else '<'}{node_name}" for node_name, orient in path_datas['path']])
+                        gfa_writer.write(
+                            f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas else line_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}\n")
                     line_number += 1

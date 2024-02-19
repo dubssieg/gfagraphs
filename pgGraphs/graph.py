@@ -65,7 +65,11 @@ class Graph():
                         case GFALine.WALK | GFALine.PATH:
                             self.paths[name] = datas
                         case GFALine.LINE:
-                            self.lines[name] = datas
+                            if name not in self.lines:
+                                self.lines[name] = datas
+                            else:
+                                self.lines[name]['alternates'] = self.lines[name].get(
+                                    'alternates', []) + [datas['orientation']]
                         case GFALine.HEADER:
                             self.headers.append(datas)
                         case _:
@@ -79,13 +83,17 @@ class Graph():
         """
         return f"GFA Graph object ({self.metadata['version']}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)} paths."
 
-    def save_graph(self, output_file: str) -> None:
+    def save_graph(self, output_file: str, minimal: bool = False) -> None:
         """Given a GFA graph loaded in memory, writes it to disk in a GFA-compatible format.
 
         Args:
             output_file (str): path where to output the graph
+            minimal (bool, optional): if the graph should have the minimum required info in it (fixes compatibility issues). Defaults to False.
         """
-        GFAParser.save_graph(self, output_path=output_file)
+        if minimal:
+            GFAParser.save_light_graph(self, output_path=output_file)
+        else:
+            GFAParser.save_graph(self, output_path=output_file)
 
 ################################################# EDIT CYCLES #################################################
 
@@ -176,12 +184,16 @@ class Graph():
             ori_sink (str): orientation in the entering node
             metadata (dict,optional) additional tags (GFA-compatible) for the edge
         """
-        self.lines[(source, sink)] = {
-            'start': source,
-            'end': sink,
-            'orientation': f"{ori_source}/{ori_sink}",
-            **metadata
-        }
+        if (source, sink) not in self.lines:
+            self.lines[(source, sink)] = {
+                'start': source,
+                'end': sink,
+                'orientation': f"{ori_source}/{ori_sink}",
+                **metadata
+            }
+        else:
+            self.lines[(source, sink)]['alternates'] = self.lines[(source, sink)].get(
+                'alternates', []) + [f"{ori_source}/{ori_sink}"]
 
     def add_path(
         self,
@@ -405,6 +417,13 @@ class Graph():
 
 ############### POsitionnal tag ###############
 
+    def compute_neighbors(self) -> None:
+        """
+        Computes both predecessors and successors
+        """
+        self.compute_child_nodes()
+        self.compute_parent_nodes()
+
     def compute_child_nodes(self) -> None:
         """
         For each edge in the graph, annotates extruding nodes from the edges info
@@ -413,6 +432,15 @@ class Graph():
             self.segments[node]['successors'] = set()  # set[str]
         for from_node, to_node in self.lines.keys():
             self.segments[from_node]['successors'].add(to_node)
+
+    def compute_parent_nodes(self) -> None:
+        """
+        For each edge in the graph, annotates intruding nodes from the edges info
+        """
+        for node in self.segments.keys():
+            self.segments[node]['predecessors'] = set()  # set[str]
+        for from_node, to_node in self.lines.keys():
+            self.segments[to_node]['predecessors'].add(from_node)
 
     def global_offset(self, reference: str, threads: int = 1) -> None:
         """We want to create a global offset (GO) for each node, which consists

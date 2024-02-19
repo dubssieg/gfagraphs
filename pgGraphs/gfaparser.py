@@ -1,5 +1,5 @@
 "Abstract class for parsing and saving GFA file format"
-from re import match, sub
+from re import match
 from typing import Callable
 from json import loads, dumps
 from os import path, stat
@@ -197,10 +197,10 @@ class GFAParser:
                 line_datas["length"] = len(datas[2])
                 if load_sequence_in_memory:
                     line_datas["seq"] = datas[2]
-                return (sub('\D', '', datas[1]), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 3)})
+                return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 3)})
             case GFALine.LINE:
-                line_datas["start"] = sub('\D', '', datas[1])
-                line_datas["end"] = sub('\D', '', datas[3])
+                line_datas["start"] = datas[1]
+                line_datas["end"] = datas[3]
                 line_datas["orientation"] = f"{datas[2]}/{datas[4]}"
                 return ((line_datas['start'], line_datas['end']), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
             case GFALine.WALK:

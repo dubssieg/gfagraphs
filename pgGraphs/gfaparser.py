@@ -267,7 +267,7 @@ class GFAParser:
                 for line in graph.lines.values():
                     # We accomodate for all alternatives orientation versions that are described in the input graph file to be written back
                     all_alternates = line.pop(
-                        'alternates', []) + line['orientation']
+                        'alternates', []) + [line['orientation']]
                     for alt in all_alternates:
                         ori1, ori2 = alt.split('/')
                         gfa_writer.write(f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t0M\t" + '\t'.join(

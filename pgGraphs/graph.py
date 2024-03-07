@@ -4,6 +4,7 @@ from pgGraphs.abstractions import GFALine, Orientation
 from pgGraphs.gfaparser import GFAParser
 from gzip import open as gz_open
 from tharospytools.multithreading import futures_collector
+from typing import Any
 
 
 class Graph():
@@ -83,17 +84,19 @@ class Graph():
         """
         return f"GFA Graph object ({self.metadata['version']}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)} paths."
 
-    def save_graph(self, output_file: str, minimal: bool = False) -> None:
+    def save_graph(self, output_file: str, minimal: bool = False, output_format: bool | Any = False) -> None:
         """Given a GFA graph loaded in memory, writes it to disk in a GFA-compatible format.
 
         Args:
             output_file (str): path where to output the graph
             minimal (bool, optional): if the graph should have the minimum required info in it (fixes compatibility issues). Defaults to False.
         """
-        if minimal:
-            GFAParser.save_light_graph(self, output_path=output_file)
-        else:
-            GFAParser.save_graph(self, output_path=output_file)
+        GFAParser.save_graph(
+            graph=self,
+            output_path=output_file,
+            force_format=output_format,
+            minimal_graph=minimal,
+        )
 
 ################################################# EDIT CYCLES #################################################
 
@@ -108,6 +111,35 @@ class Graph():
         if len(self.paths) == 0:
             raise NotImplementedError(
                 "Function is not implemented for graphs without paths.")
+        # The node name correspondance is graph-level
+        nodes_correspondances: dict[str, list] = dict()
+        for _, path_data in self.paths.items():
+            # Whereas the count is path-level
+            encountered_node_count: dict[str, int] = dict()
+            for i, (node, ori) in enumerate(path_data['path']):
+                encountered_node_count[node] = encountered_node_count.get(
+                    node, 0) + 1
+                if encountered_node_count[node] > 1:
+                    # We need to duplicate the node
+
+                    try:
+                        next_node_name: str = nodes_correspondances.get(
+                            node, None)[encountered_node_count[node]-1]
+                        # If succed, node already created
+                    except:
+                        # If fail, node does not exists, we need to create it
+                        next_node_name: str = self.get_free_node_name()
+                        nodes_correspondances[node] = nodes_correspondances.get(
+                            node, []) + [next_node_name]
+                        self.add_node(
+                            next_node_name,
+                            self.segments[node]['seq']
+                        )
+                    self.add_edge(
+                        path_data['path'][i-1][0], path_data['path'][i-1][1], next_node_name, ori)
+                    path_data['path'][i] = (next_node_name, ori)
+
+        """
         number_of_nodes: int = len(self.segments)
         for path_datas in self.paths.values():
             iters: int = 0
@@ -143,10 +175,9 @@ class Graph():
         # If we did calculate positions, those are not accurate anymore, needs recomputing
         if 'PO' in self.metadata:
             self.sequence_offsets(recalculate=True)
-
+        """
 
 ################################################# ADD ELEMNTS TO GRAPH #################################################
-
 
     def add_node(
         self,
@@ -184,6 +215,16 @@ class Graph():
             ori_sink (str): orientation in the entering node
             metadata (dict,optional) additional tags (GFA-compatible) for the edge
         """
+        if not ori_sink in ['+', '-', '?', '=']:
+            try:
+                ori_sink = ori_sink.value
+            except:
+                raise ValueError("Not compatible with GFA format.")
+        if not ori_source in ['+', '-', '?', '=']:
+            try:
+                ori_source = ori_source.value
+            except:
+                raise ValueError("Not compatible with GFA format.")
         if (source, sink) not in self.lines:
             self.lines[(source, sink)] = {
                 'start': source,
@@ -259,6 +300,10 @@ class Graph():
         return [((source, sink), datas) for (source, sink), datas in self.lines.items() if source == node_name or sink == node_name]
 
 ################################################# EDIT GRAPH #################################################
+
+    def get_next_unused_node_name(self) -> str:
+        "Returns the next available integer as str to identify a new node to be created, within the minmax range of nodes defined in the graph."
+        return str(min(set(range(1, max([int(__) for __ in self.segments.keys()])+1)) - set([int(__) for __ in self.segments.keys()])))
 
     def split_segments(
         self,

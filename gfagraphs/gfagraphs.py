@@ -9,6 +9,9 @@ from json import loads, dumps
 from itertools import chain
 from networkx import MultiDiGraph, DiGraph
 from tharospytools.matplotlib_tools import get_palette
+from warnings import warn
+
+warn("The lib gfagraphs is now deprecated. Please move your program to use pgGraphs (also included in the lib) as delepoppement efforts goes into it.")
 
 
 def get_gfa_subtype(gfa_file_path: str | list[str]) -> str | list[str]:

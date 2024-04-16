@@ -193,7 +193,7 @@ class GFAParser:
             tuple[str, GFALine, dict]: datas of the line in Python-compatible formats.
         """
         line_datas: dict = dict()
-        if not (datas[0].isupper() or datas[0] == '#' or len(datas) == 0):
+        if not (datas[0].isupper() or len(datas) == 0):
             return (None, None, None)
 
         match (line_type := GFALine(datas[0])):

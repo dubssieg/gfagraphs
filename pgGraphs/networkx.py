@@ -30,7 +30,6 @@ class GFANetwork:
                 edge_datas['end'],
                 label=edge_datas["orientation"],
             )
-        graph.metadata['backbone']
         return backbone
 
     @staticmethod
@@ -40,7 +39,8 @@ class GFANetwork:
         node_size_classes: tuple[list] = (
             [0, 1], [2, 10], [11, 50], [51, 200], [201, 500], [
                 501, 1000], [1001, 10000], [10001, float('inf')]
-        )
+        ),
+        start_stop_ref: tuple | bool = False,
     ) -> MultiDiGraph:
         """Computes the networkx representation of the GFA.
         This function is intended to be used for graphical representation purposes, and not for computing metrics on the graph.
@@ -51,6 +51,9 @@ class GFANetwork:
         Returns:
             MultiDiGraph: a networkx graph featuring the maximum of information
         """
+        if start_stop_ref:
+            graph.sequence_offsets(recalculate=True)
+            start, stop, ref = start_stop_ref
         # Define empty graph
         nx_graph: MultiDiGraph = MultiDiGraph()
         # Creating the palette for node class colors
@@ -114,9 +117,7 @@ class GFANetwork:
                     label=edge_datas["orientation"],
                     weight=3
                 )
-        # Adding NX representation to metadata
-        graph.metadata['graph'] = nx_graph
-        return graph.metadata['graph']
+        return nx_graph
 
     def get_most_external_nodes(self) -> list[str]:
         """Get nodes that are on the edges of the graph (starting and ending nodes)

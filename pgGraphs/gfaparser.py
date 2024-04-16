@@ -180,29 +180,39 @@ class GFAParser:
         return mapping
 
     @staticmethod
-    def read_gfa_line(datas: list[str], load_sequence_in_memory: bool = True, regexp_pattern: str = ".*") -> tuple[str, GFALine, dict]:
+    def read_gfa_line(datas: list[str], load_sequence_in_memory: bool = True, regexp_pattern: str = ".*", memory_mode: bool = True) -> tuple[str, GFALine, dict]:
         """Calls methods to parse a GFA line,
         accordingly to it's fields described in the GFAspec github.
 
         Args:
             datas (list): a list of the fileds in the line
             load_sequence_in_memory (bool): if the line is a segment, ask to load its sequence
+            memory_mode (bool): if the strict minimum in information should be inserted
 
         Returns:
             tuple[str, GFALine, dict]: datas of the line in Python-compatible formats.
         """
         line_datas: dict = dict()
+        if not (datas[0].isupper() or datas[0] == '#' or len(datas) == 0):
+            return (None, None, None)
+
         match (line_type := GFALine(datas[0])):
             case GFALine.SEGMENT:
                 line_datas["length"] = len(datas[2])
                 if load_sequence_in_memory:
                     line_datas["seq"] = datas[2]
-                return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 3)})
+                if memory_mode:
+                    return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 3)})
+                else:
+                    return (datas[1], line_type, line_datas)
             case GFALine.LINE:
-                line_datas["start"] = datas[1]
-                line_datas["end"] = datas[3]
-                line_datas["orientation"] = f"{datas[2]}/{datas[4]}"
-                return ((line_datas['start'], line_datas['end']), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
+                if memory_mode:
+                    line_datas["start"] = datas[1]
+                    line_datas["end"] = datas[3]
+                    line_datas["orientation"] = f"{datas[2]}/{datas[4]}"
+                    return ((line_datas['start'], line_datas['end']), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
+                else:
+                    return (None, None, None)
             case GFALine.WALK:
                 line_datas["name"] = datas[1]
                 line_datas["id"] = datas[3]

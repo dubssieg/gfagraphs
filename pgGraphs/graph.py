@@ -4,7 +4,8 @@ from pgGraphs.abstractions import GFALine, Orientation
 from pgGraphs.gfaparser import GFAParser
 from gzip import open as gz_open
 from tharospytools.multithreading import futures_collector
-from typing import Any
+from tharospytools.bio_tools import revcomp
+from typing import Any, Generator
 
 
 class Graph():
@@ -38,7 +39,8 @@ class Graph():
         # Declaring format attributes, generators...
         self.metadata: dict = {
             'version': GFAParser.get_gfa_format(gfa_file_path=gfa_file) if gfa_file and not low_memory else 'unknown',
-            'next_node_name': (x for x in count(start=1) if str(x) not in self.segments) if not low_memory else 'unknown'
+            'next_node_name': (x for x in count(start=1) if str(x) not in self.segments) if not low_memory else 'unknown',
+            'with_sequence': with_sequence
         }
         self.segments: dict[str, dict] = {}
         self.lines: dict[tuple[str, str], dict] = {}
@@ -50,15 +52,11 @@ class Graph():
             with open(gfa_file, 'r', encoding='utf-8') if gfa_file.endswith('.gfa') else gz_open(gfa_file, 'rt') as gfa_reader:
                 for gfa_line in gfa_reader:
 
-                    if not gfa_line[0].isupper() and len(gfa_line.strip()) != 0:
-                        raise ValueError(
-                            "All GFA lines shall start with a capital letter. Wrong format, please fix."
-                        )
-
                     name, line_type, datas = GFAParser.read_gfa_line(
                         datas=[__.strip() for __ in gfa_line.split('\t')],
                         load_sequence_in_memory=with_sequence and not low_memory,
                         regexp_pattern=regexp,
+                        memory_mode=low_memory,
                     )
                     match line_type:
                         case GFALine.SEGMENT:
@@ -98,6 +96,21 @@ class Graph():
             minimal_graph=minimal,
         )
 
+    def reconstruct_sequences(self) -> dict[str, Generator]:
+        """Needs to have paths
+        Returns generators
+
+        Returns:
+            dict[str,Generator]: segmented path
+        """
+        if not self.metadata['with_sequence']:
+            raise RuntimeError(
+                'You loaded the graph with `low_memory` activated, hence the segments do not have a `seq` property.'
+            )
+        return {
+            path_name: (self.segments[node_name]['seq'] if ori == Orientation.FORWARD else revcomp(self.segments[node_name]['seq']) for node_name, ori in self.paths[path_name]['path']) for path_name in self.paths.keys()
+        }
+
 ################################################# EDIT CYCLES #################################################
 
     def unfold(
@@ -111,6 +124,10 @@ class Graph():
         if len(self.paths) == 0:
             raise NotImplementedError(
                 "Function is not implemented for graphs without paths.")
+        if not self.metadata['with_sequence']:
+            raise RuntimeError(
+                'You loaded the graph with `low_memory` activated, hence the segments do not have a `seq` property.'
+            )
         # The node name correspondance is graph-level
         nodes_correspondances: dict[str, list] = dict()
         for _, path_data in self.paths.items():
@@ -139,43 +156,35 @@ class Graph():
                         path_data['path'][i-1][0], path_data['path'][i-1][1], next_node_name, ori)
                     path_data['path'][i] = (next_node_name, ori)
 
-        """
-        number_of_nodes: int = len(self.segments)
-        for path_datas in self.paths.values():
-            iters: int = 0
-            encountered: dict = {}
-            for i, (node, oriT) in enumerate(path_datas['path']):
-                # Getting the number of times we've see this node, then storing it
-                encountered[node] = encountered.get(node, 0)+1
-                if encountered.get(node, 1)-1:
-                    # Node has been seen more than one time!
-                    new_name: str = str(number_of_nodes+iters)
-                    # Adding new node
-                    self.add_node(
-                        name=new_name,
-                        sequence=self.segments[node]['seq'],
-                        metadata=self.segments[node]
-                    )
-                    # Renaming in path
-                    path_datas['path'][i][0] = new_name
-                    # We need to add new edge
-                    try:
-                        self.add_edge(
-                            source=path_datas['path'][i-1][0],
-                            ori_source=path_datas['path'][i-1][1],
-                            sink=new_name,
-                            ori_sink=oriT
-                        )
-                    except:
-                        # Will happen if loop at first position in the graph (that would not happen normally, right?)
-                        pass
-                    finally:
-                        iters += 1
+################################################# NAVIGATE GRAPH #################################################
 
-        # If we did calculate positions, those are not accurate anymore, needs recomputing
-        if 'PO' in self.metadata:
-            self.sequence_offsets(recalculate=True)
+    def add_dovetails(
+        self
+    ) -> None:
         """
+        Adds dovetails on tips of the graph (at the start/end of each path)
+        Adds them to the path
+        """
+        for x in ['source', 'sink']:
+            self.add_node(
+                name=x,
+                sequence=''
+            )
+        for path_datas in self.paths.values():
+            self.add_edge(
+                source='source',
+                ori_source=path_datas['path'][0][1],
+                sink=path_datas['path'][0][0],
+                ori_sink=path_datas['path'][0][1],
+            )
+            self.add_edge(
+                source=path_datas['path'][-1][0],
+                ori_source=path_datas['path'][-1][1],
+                sink='sink',
+                ori_sink=path_datas['path'][-1][1],
+            )
+            path_datas['path'] = [('source', '+')] + \
+                path_datas['path'] + [('sink', '+')]
 
 ################################################# ADD ELEMNTS TO GRAPH #################################################
 
@@ -192,11 +201,17 @@ class Graph():
             sequence (str): DNA sequence associated to node
             metadata (dict,optional) additional tags (GFA-compatible) for the node
         """
-        self.segments[name] = {
-            'seq': sequence,
-            'length': len(sequence),
-            **metadata
-        }
+        if not self.metadata['with_sequence']:
+            self.segments[name] = {
+                'length': len(sequence),
+                **metadata
+            }
+        else:
+            self.segments[name] = {
+                'seq': sequence,
+                'length': len(sequence),
+                **metadata
+            }
 
     def add_edge(
         self,

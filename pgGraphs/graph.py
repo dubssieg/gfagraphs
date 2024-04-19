@@ -9,8 +9,12 @@ from typing import Any, Generator
 
 
 class Graph():
-    """
-    Modelizes a GFA graph
+    """Modelizes a GFA graph in memory from a `.gfa` file.
+
+    Returns
+    -------
+    Graph
+        object made of dicts holding informations about the datastructure
     """
     __slots__ = [
         'segments',
@@ -29,12 +33,16 @@ class Graph():
     ) -> None:
         """Constructor for GFA Graph object.
 
-        Args:
-            gfa_file (str | None, optional): A file path to a valid GFA file. Defaults to None.
-            with_sequence (bool, optional): If sequence should be included in nodes. Consumes more memory with huge graphs. Defaults to False.
-
-        Raises:
-            ValueError: A line does not start with a capital letter
+        Parameters
+        ----------
+        gfa_file : str | None, optional
+            A file path to a valid GFA file, by default None
+        with_sequence : bool, optional
+            If sequence should be included in nodes. Consumes more memory with huge graphs, by default True
+        low_memory : bool, optional
+            If the minimal number of information should be loaded or not. If yes, will only load length of the nodes and the paths but not the edges, by default False
+        regexp : str, optional
+            Regular expression to keep from the paths names (used to standardize/reduce them), by default ".*"
         """
         # Declaring format attributes, generators...
         self.metadata: dict = {
@@ -75,19 +83,26 @@ class Graph():
                             pass
 
     def __str__(self) -> str:
-        """Provides a text representation of the graph
+        """Returns a textual description of the object.
 
-        Returns:
-            str: a string describing the graph
+        Returns
+        -------
+        str
+            a string which informs that the graph object is loaded.
         """
         return f"GFA Graph object ({self.metadata['version']}) containing {len(self.segments)} segments, {len(self.lines)} edges and {len(self.paths)} paths."
 
     def save_graph(self, output_file: str, minimal: bool = False, output_format: bool | Any = False) -> None:
         """Given a GFA graph loaded in memory, writes it to disk in a GFA-compatible format.
 
-        Args:
-            output_file (str): path where to output the graph
-            minimal (bool, optional): if the graph should have the minimum required info in it (fixes compatibility issues). Defaults to False.
+        Parameters
+        ----------
+        output_file : str
+            path on disk where to output the GFA file
+        minimal : bool, optional
+            if only required tags should be written in the output file, by default False
+        output_format : bool | Any, optional
+            a GFA subformat to write to, by default False
         """
         GFAParser.save_graph(
             graph=self,
@@ -97,11 +112,18 @@ class Graph():
         )
 
     def reconstruct_sequences(self) -> dict[str, Generator]:
-        """Needs to have paths
-        Returns generators
+        """Reads the paths (if they exists) that describes genomes in the graph
+        Aggregates the nodes (by their reading direction) per path
 
-        Returns:
-            dict[str,Generator]: segmented path
+        Returns
+        -------
+        dict[str, Generator]
+            mapping between name of path and generator of every substring in the path
+
+        Raises
+        ------
+        RuntimeError
+            if the graph does not have paths
         """
         if not self.metadata['with_sequence']:
             raise RuntimeError(
@@ -116,17 +138,25 @@ class Graph():
     def unfold(
         self
     ) -> None:
-        """Applies an unfolding on cycles, that allows them to be linearized
+        """[EXPERIMENTAL, WIP]
+        Applies an unfolding on cycles, that allows them to be linearized
         WARNING: May solely be used on graphs with paths.
         WARNING: Not fully tested yet, use at your own discretion.
         TODO: fix closing edge of cycle not destroyed.
+
+        Raises
+        ------
+        NotImplementedError
+            the graph does not have paths
+        RuntimeError
+            the graph was loaded in incorrect mode
         """
         if len(self.paths) == 0:
             raise NotImplementedError(
                 "Function is not implemented for graphs without paths.")
         if not self.metadata['with_sequence']:
             raise RuntimeError(
-                'You loaded the graph with `low_memory` activated, hence the segments do not have a `seq` property.'
+                'You loaded the graph with `low_memory` or `with_sequence` activated, hence the segments do not have a `seq` property.'
             )
         # The node name correspondance is graph-level
         nodes_correspondances: dict[str, list] = dict()
@@ -163,7 +193,6 @@ class Graph():
     ) -> None:
         """
         Adds dovetails on tips of the graph (at the start/end of each path)
-        Adds them to the path
         """
         for x in ['source', 'sink']:
             self.add_node(
@@ -196,10 +225,14 @@ class Graph():
     ) -> None:
         """Applies the addition of a node on the currently edited graph.
 
-        Args:
-            name (str): name of the future node
-            sequence (str): DNA sequence associated to node
-            metadata (dict,optional) additional tags (GFA-compatible) for the node
+        Parameters
+        ----------
+        name : str
+            a name for the node to be added
+        sequence : str
+            a label (substring) associated to the node
+        **metadata : Any
+            optional, additional informations for the node (must be GFA-compatible)
         """
         if not self.metadata['with_sequence']:
             self.segments[name] = {
@@ -223,12 +256,23 @@ class Graph():
     ) -> None:
         """Applies the addition of an edge to the current graph
 
-        Args:
-            source (str): name of source node
-            ori_source (str): orientation from the exiting node
-            sink (str): name of sink node
-            ori_sink (str): orientation in the entering node
-            metadata (dict,optional) additional tags (GFA-compatible) for the edge
+        Parameters
+        ----------
+        source : str
+            the node form where the edge extrudes
+        ori_source : str
+            the orientation from which the edge comes
+        sink : str
+            the node to which the edge goes
+        ori_sink : str
+            the orientation the edge enters the target node
+        **metadata : Any
+            optional, supplementary GFA-compatible tags.
+
+        Raises
+        ------
+        ValueError
+            specified orientation is not compatible with GFA format
         """
         if not ori_sink in ['+', '-', '?', '=']:
             try:
@@ -261,14 +305,21 @@ class Graph():
         **metadata: dict
     ) -> None:
         """Applies the addition of a path on the currently edited graph.
+        Please note that it does not add any of the maybe missing nodes or edges
+        (as we cound not assume the length of nodes nor the orientation of edges)
 
-        Args:
-            name (str): name for the future path
-            chain (list[tuple[str, Orientation]]): a list of couples node_name/orientation that describes the walk of a genome
-            start (int, optional): Starting offset of the path. Defaults to 0.
-            end (int | None, optional): Ending offset of the path. Defaults to None.
-            origin (str | None, optional): Haplotype number. Defaults to None.
-            metadata (dict,optional) additional tags (GFA-compatible) for the path
+        Parameters
+        ----------
+        name : str
+            name of the path
+        chain : list[tuple[str, Orientation]]
+            a series of tuples describing node_name,orientation)
+        start : int, optional
+            starting offset for the path, by default 0
+        end : int | None, optional
+            ending offset of the path (length - start), by default None
+        origin : str | None, optional
+            alternative name, used for W-line formatting, by default None
         """
         self.paths[name] = {
             "id": name,
@@ -284,47 +335,65 @@ class Graph():
     def get_out_edges(self, node_name: str) -> list[tuple[tuple[str, str], dict]]:
         """Return all the exiting edges of a node
 
-        Args:
-            node_name (str): the query
+        Parameters
+        ----------
+        node_name : str
+            a node in the graph
 
-        Returns:
-            list[tuple[tuple[str, str], dict]]: the edges matching the condition
+        Returns
+        -------
+        list[tuple[tuple[str, str], dict]]
+            for each edge matching criterion, the source and target as well as the supplementary tags
         """
         return [((source, sink), datas) for (source, sink), datas in self.lines.items() if source == node_name]
 
     def get_in_edges(self, node_name: str) -> list[tuple[tuple[str, str], dict]]:
         """Return all the entering edges of a node
 
-        Args:
-            node_name (str): the query
+        Parameters
+        ----------
+        node_name : str
+            a node in the graph
 
-        Returns:
-            list[tuple[tuple[str, str], dict]]: the edges matching the condition
+        Returns
+        -------
+        list[tuple[tuple[str, str], dict]]
+            for each edge matching criterion, the source and target as well as the supplementary tags
         """
         return [((source, sink), datas) for (source, sink), datas in self.lines.items() if sink == node_name]
 
     def get_edges(self, node_name: str) -> list[tuple[tuple[str, str], dict]]:
         """Return all the edges of a node
 
-        Args:
-            node_name (str): the query
+        Parameters
+        ----------
+        node_name : str
+            a node in the graph
 
-        Returns:
-            list[tuple[tuple[str, str], dict]]: the edges matching the condition
+        Returns
+        -------
+        list[tuple[tuple[str, str], dict]]
+            for each edge matching criterion, the source and target as well as the supplementary tags
         """
         return [((source, sink), datas) for (source, sink), datas in self.lines.items() if source == node_name or sink == node_name]
 
 ################################################# EDIT GRAPH #################################################
 
     def get_next_unused_node_name(self) -> str:
-        "Returns the next available integer as str to identify a new node to be created, within the minmax range of nodes defined in the graph."
+        """Returns the next available integer as str to identify a new node to be created, within the minmax range of nodes defined in the graph.
+
+        Returns
+        -------
+        str
+            a possible node name in the graph which is not used currently
+        """
         return str(min(set(range(1, max([int(__) for __ in self.segments.keys()])+1)) - set([int(__) for __ in self.segments.keys()])))
 
     def split_segments(
         self,
         segment_name: str,
-        future_segment_name: str | list,
-        position_to_split: tuple | list
+        future_segment_name: list,
+        position_to_split: list
     ) -> None:
         """Given a segment to split and a series/single new name(s) + position(s),
         breaks the node in multiple nodes and includes splits them in the Graph data
@@ -332,13 +401,19 @@ class Graph():
         If you want to split the segment A into A,B, ... you must provide
         self.split_segments(A,[A,B, ...],[(start_A,end_A),(start_B,end_B), ...])
 
-        Args:
-            segment_name (str): the name of the node to break
-            future_segment_name (str | list): the name(s) of the future nodes
-            position_to_split (int | list): the position(s) where to split the sequence (start,stop)
+        Parameters
+        ----------
+        segment_name : str
+            the node to split
+        future_segment_name : list
+            the futures names of the nodes. The current name will be used for the first node of the splitting series
+        position_to_split : list
+            a list of breakpoints where to split to. 
 
-        Raises:
-            ValueError: if the provided args aren't compatible
+        Raises
+        ------
+        ValueError
+            the number of specified breakpoints is incompatible with the number of names provided
         """
         # First, we check if input parameters are correct
         node_to_split: dict = self.segments[segment_name]
@@ -407,11 +482,15 @@ class Graph():
         old_name: str,
         new_name: str
     ) -> None:
-        """Tries to replace all node name references
+        """Replace the node name and all its references
+        be it in path, node accessions, edges
 
-        Args:
-            old_name (str): the name to replace
-            new_name (str): the name to be replaced with
+        Parameters
+        ----------
+        old_name : str
+            the current name of the node
+        new_name : str
+            the new name to be given to the node
         """
         try:
             node_data: dict = self.segments.pop(old_name)
@@ -443,9 +522,12 @@ class Graph():
     ) -> None:
         """Given a series of nodes, merges it to the first of the series.
 
-        Args:
-            *segs (list): names of the nodes to merge
-            merge_name (str | None, optional): name for the merging node. Defaults to None.
+        Parameters
+        ----------
+        merge_name : str | None, optional
+            the name to merge to. If not specified, uses the first of the series, by default None
+        *segs : Series[str]
+            a series of nodes to be merged. Must be consecutive and don't disturb other paths.
         """
         # Remove old nodes
         new_node_seq: str = ""
@@ -480,13 +562,19 @@ class Graph():
     def compute_neighbors(self) -> None:
         """
         Computes both predecessors and successors
+        This function is O(n) with n being the number of edges.
         """
-        self.compute_child_nodes()
-        self.compute_parent_nodes()
+        for node in self.segments.keys():
+            self.segments[node]['successors'] = set()
+            self.segments[node]['predecessors'] = set()
+        for from_node, to_node in self.lines.keys():
+            self.segments[from_node]['successors'].add(to_node)
+            self.segments[to_node]['predecessors'].add(from_node)
 
     def compute_child_nodes(self) -> None:
         """
         For each edge in the graph, annotates extruding nodes from the edges info
+        This function is O(n) with n being the number of edges.
         """
         for node in self.segments.keys():
             self.segments[node]['successors'] = set()  # set[str]
@@ -496,6 +584,7 @@ class Graph():
     def compute_parent_nodes(self) -> None:
         """
         For each edge in the graph, annotates intruding nodes from the edges info
+        This function is O(n) with n being the number of edges.
         """
         for node in self.segments.keys():
             self.segments[node]['predecessors'] = set()  # set[str]
@@ -508,11 +597,15 @@ class Graph():
         Positions are stored in the segments, with the "GO" tag.
         Warning: if reference has loops, positions are going to be ambiguous.
         Moreover, in this first version, only one coordinate per node is assigned, meaning loops wont be annotated twice.
-        As of now function is NOT RECOMMANDED to use fo production.
+        As of now function is NOT RECOMMANDED to use for production.
         This fonction is RECURSIVE and will FAIL on HUGE GRAPHS.
 
-        Args:
-            reference (str): the path used for annotations
+        Parameters
+        ----------
+        reference : str
+            name of the path we want to use as backbone for our position system
+        threads : int, optional
+            number of threads to use for computation (max parallel deep seaches), by default 1
         """
         # We pre-compute successors of nodes for easy walks in the graph
         self.compute_child_nodes()
@@ -535,9 +628,14 @@ class Graph():
         def explore(node_name: str, current_coord: int, thread_name: str) -> None:
             """Recursive function that is guided by the net to explore all nodes in graph and annotates them
 
-            Args:
-                node_name (str): current node we're looking at
-                current_coord (int): endpoint of the previous node
+            Parameters
+            ----------
+            node_name : str
+                the node we're in at the current iteration
+            current_coord : int
+                position we're at
+            thread_name : str
+                identifier for thread for visited boolean tracking
             """
             self.segments[node_name]['GO'][0] = max(
                 self.segments[node_name]['GO'][0], current_coord)
@@ -569,17 +667,21 @@ class Graph():
         )
 
     def sequence_offsets(self, recalculate: bool = False) -> None:
-        """
-            Calculates the offsets within each path for each node
-            Here, we aim to extend the current GFA tag format by adding tags
-            that do respect the GFA naming convention.
-            A JSON string, PO (Path Offset) positions, relative to paths.
-            Hence, PO:J:{'w1':[(334,335,'+')],'w2':[(245,247,'-')]} tells that the walk/path w1
-            contains the sequence starting at position 334 and ending at position 335,
-            and the walk/path w2 contains the sequence starting at the offset 245 (ending 247),
-            and that the sequences are reversed one to each other.
-            Note that any non-referenced walk in this field means that the node
-            is not inside the given walk.
+        """Calculates the offsets within each path for each node
+        Here, we aim to extend the current GFA tag format by adding tags
+        that do respect the GFA naming convention.
+        A JSON string, PO (Path Offset) positions, relative to paths.
+        Hence, PO:J:{'w1':[(334,335,'+')],'w2':[(245,247,'-')]} tells that the walk/path w1
+        contains the sequence starting at position 334 and ending at position 335,
+        and the walk/path w2 contains the sequence starting at the offset 245 (ending 247),
+        and that the sequences are reversed one to each other.
+        Note that any non-referenced walk in this field means that the node
+        is not inside the given walk.
+
+        Parameters
+        ----------
+        recalculate : bool, optional
+            If the offsets should be re-computed from scratch, by default False
         """
         if not 'PO' in self.metadata or recalculate:
             for walk_name, walk_datas in self.paths.items():
@@ -609,7 +711,9 @@ class Graph():
     def get_free_node_name(self) -> str:
         """Asks the generator for the next available node name
 
-        Returns:
-            str: an available node name
+        Returns
+        -------
+        str
+            the generator should be computed and won't work in `low_memory` mode
         """
         return str(next(self.metadata['next_node_name']))

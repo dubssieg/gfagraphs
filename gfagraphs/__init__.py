@@ -1,3 +1,2 @@
 'Abstraction layer for GFA format'
-from .gfagraphs import Graph, Record, GfaStyle, Segment, Line, Containment, Walk, Path, Jump, Header, Orientation
-from .gfagraphs import supplementary_datas
+from pgGraphs import *

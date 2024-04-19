@@ -1,7 +1,7 @@
 [![](https://img.shields.io/badge/Python-3.10-blue.svg)]()
 [![](https://img.shields.io/badge/Python-3.11-blue.svg)]()
 [![](https://img.shields.io/badge/Python-3.12-blue.svg)]()
-[![](https://img.shields.io/badge/documentation-unfinished-orange.svg)]()
+[![Documentation Status](https://readthedocs.org/projects/gfagraphs/badge/?version=latest)](https://gfagraphs.readthedocs.io/en/latest/?badge=latest)
 
 # GFAGraphs - A Python GFA library
 

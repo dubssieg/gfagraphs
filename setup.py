@@ -20,7 +20,6 @@ REQUIREMENTS: list[str] = [
     'tharos-pytools',
     'matplotlib',
     'mycolorpy',
-    ''
 ]
 
 

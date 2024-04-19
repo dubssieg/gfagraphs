@@ -5,23 +5,23 @@
 
 # GFAGraphs - A Python GFA library
 
+> [!WARNING]\
+> A paper is in preparation about this work. If you consider to use this tool, please contact the author for attribution.
+
 This Python library aims to be an abstraction layer for GFA file format.
-Two implementations are proposed:
-+ a legacy one, which will remain until deprecated, in `gfagraphs/`
-+ a new, cleaner and faster implementation, in `pgGraphs/`
 
 > [!WARNING]\
-> Moving forward, features will only be added to `pgGraphs`, while `gfagraphs` will remain as it, until full migration is done in [pancat](https://github.com/Tharos-ux/pancat) tool.
+> The old version of `gfagraphs` has been deprecated (since v0.3.0), in favour of `pgGraphs`. Using `gfagraphs` or `pgGraphs` to import resolves now in using the same library. In a near future, `pgGraphs` namespace will be deprecated.
 
-## Package pgGraphs
+## Package `pgGraphs`/`gfagraphs`
 
 ![](https://media.discordapp.net/attachments/874430800802754623/1179353568105467964/library.png)
 
 The package is organized in 4 modules:
-+ `pgGraphs.abstractions` contains abstractions over GFA formats
-+ `pgGraphs.gfaparser` contains an abstract class for parsing and saving GFA file format
-+ `pgGraphs.graph` contains the main `Graph` class that represents a GFA graph in memory, and edit functions
-+ `pgGraphs.networkx` conains an abstract class for visualization and modelization of GFA in a NetworkX object
++ `gfagraphs.abstractions` contains abstractions over GFA formats
++ `gfagraphs.gfaparser` contains an abstract class for parsing and saving GFA file format
++ `gfagraphs.graph` contains the main `Graph` class that represents a GFA graph in memory, and edit functions
++ `gfagraphs.networkx` conains an abstract class for visualization and modelization of GFA in a NetworkX object
 
 > [!NOTE]\
 > Want to contribute? Feel free to open a PR on an issue about a missing, buggy or incomplete feature!

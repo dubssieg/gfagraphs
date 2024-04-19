@@ -6,9 +6,9 @@ Welcome to gfagraphs's documentation!
    :caption: Contents:
 
       Graph <graph.rst>
-      gfaparser <gfaparser.rst>
-      networkx <networkx.rst>
-      abstractions <abstractions.rst>
+      GFAParser <gfaparser.rst>
+      GFANetwork <networkx.rst>
+      Abstractions <abstractions.rst>
 
 Indices and tables
 ==================

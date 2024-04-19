@@ -1,4 +1,3 @@
-"Abstract class for parsing and saving GFA file format"
 from re import match
 from typing import Callable
 from json import loads, dumps
@@ -12,30 +11,48 @@ from re import search
 class GFAParser:
     """This class implements static methods to get informations about the contents of a GFA file, and to parse them.
 
-    Raises:
-        OSError: _description_
-        IOError: _description_
-        IOError: _description_
-        NotImplementedError: _description_
-        ValueError: _description_
-        ValueError: _description_
+    Returns
+    -------
+    None
+        Methods are static and should be used passing arguments.
 
+    Raises
+    ------
+    OSError
+        The file does not exists
+    IOError
+        File is empty
+    IOError
+        File descriptor is invalid
+    NotImplementedError
+        Byte-array or array is saved to GFA
+    ValueError
+        Data format not in GFA standards
     """
 
     @staticmethod
     def get_gfa_format(gfa_file_path: str | list[str]) -> str | list[str]:
-        """Given a file, or more, returns the gfa subtypes, and raises error if file is invalid or does not exists
+        """Given a file, or more, returns the gfa subtypes, and raises error if file is invalid or does not exists.
+        Objective is to asses GFA subformat on files for pre-processing purposes, or algorithm choices.
 
-        Args:
-            gfa_file_path (str | list[str]): one or more file paths
+        Parameters
+        ----------
+        gfa_file_path : str | list[str]
+            a series of paths, or a single one
 
-        Returns:
-            str | list[str]: a gfa subtype descriptor per input file
+        Returns
+        -------
+        str | list[str]
+            per path, a tag identifying the gfa type
 
-        Raises:
-            OSError: The file does not exists
-            IOError: The file descriptor is invalid
-            IOError: The file is empty
+        Raises
+        ------
+        OSError
+            Specified file does not exists
+        IOError
+            File descriptor is invalid
+        IOError
+            File is empty
         """
         styles: list[str] = list()
         if isinstance(gfa_file_path, str):
@@ -84,17 +101,26 @@ class GFAParser:
 
     @staticmethod
     def get_gfa_type(tag_type: str) -> type | Callable:
-        """Interprets tags of GFA as a Python-compatible format
+        """Interprets tags of GFA as a Python-compatible format.
+        Given a letter used as a tag in the GFA standard, return the type or function to cast the data to.
+        This function is used in input scenarios, to read a file from disk and interpret its content
 
-        Args:
-            tag_type (str): the letter that identifies the GFA data type
+        Parameters
+        ----------
+        tag_type : str
+            a GFA tag
 
-        Raises:
-            NotImplementedError: happens if its an array or byte array (needs doc)
-            ValueError: happens if format is not in GFA standards
+        Returns
+        -------
+        type | Callable
+            a cast descriptor to use on the data
 
-        Returns:
-            type | Callable: the cast method or type to apply
+        Raises
+        ------
+        NotImplementedError
+            Byte-array or array
+        ValueError
+            Type identifer is not in the GFA-spec
         """
         if tag_type == 'i':
             return int
@@ -111,17 +137,19 @@ class GFAParser:
 
     @staticmethod
     def set_gfa_type(tag_type: str) -> type | Callable:
-        """Interprets tags of GFA as a Python-compatible format
+        """Interprets tags of GFA as a Python-compatible format.
+        Given a letter used as a tag in the GFA standard, return the type or function to cast the data to.
+        This function is used in output scenarios, to write a file to disk.
 
-        Args:
-            tag_type (str): the letter that identifies the GFA data type
+        Parameters
+        ----------
+        tag_type : str
+            a GFA tag
 
-        Raises:
-            NotImplementedError: happens if its an array or byte array (needs doc)
-            ValueError: happens if format is not in GFA standards
-
-        Returns:
-            type | Callable: the cast method or type to apply
+        Returns
+        -------
+        type | Callable
+            a cast descriptor to use on the data
         """
         if tag_type == 'J':
             return dumps
@@ -130,17 +158,23 @@ class GFAParser:
 
     @staticmethod
     def get_python_type(data: object) -> str:
-        """Interprets tags of GFA as a Python-compatible format
+        """From a python variable, tries to identify the best suiting tag, and validates it.
+        See http://gfa-spec.github.io/GFA-spec/GFA1.html#optional-fields for more details.
 
-        Args:
-            tag_type (str): the letter that identifies the GFA data type
+        Parameters
+        ----------
+        data : object
+            the data we try to add to the GFA file
 
-        Raises:
-            NotImplementedError: happens if its an array or byte array (needs doc)
-            ValueError: happens if format is not in GFA standards
+        Returns
+        -------
+        str
+            a one-letter code for an optional filed of the GFA-spec
 
-        Returns:
-            type | Callable: the cast method or type to apply
+        Raises
+        ------
+        ValueError
+            data type could not be encoded in the GFA-spec
         """
         if isinstance(data, int):
             return 'i'
@@ -158,14 +192,19 @@ class GFAParser:
 
     @staticmethod
     def supplementary_datas(datas: list, length_condition: int) -> dict:
-        """Computes the optional tags of a gfa line and returns them as a dict
+        """Computes the optional tags of a gfa line and returns them as a dict.
 
-        Args:
-            datas (list): parsed data line
-            length_condition (int): last position of positional field
+        Parameters
+        ----------
+        datas : list
+            a list of tags and their values
+        length_condition : int
+            the tags that are mandatory (and already processed)
 
-        Returns:
-            dict: mapping tag:value
+        Returns
+        -------
+        dict
+            interpreted tags in their right types
         """
         mapping: dict = dict()
         nargs: int = length_condition
@@ -181,16 +220,24 @@ class GFAParser:
 
     @staticmethod
     def read_gfa_line(datas: list[str], load_sequence_in_memory: bool = True, regexp_pattern: str = ".*", memory_mode: bool = True) -> tuple[str, GFALine, dict]:
-        """Calls methods to parse a GFA line,
-        accordingly to it's fields described in the GFAspec github.
+        """Calls methods to parse a GFA line, accordingly to it's fields described in the GFAspec github.
+        Parses a single line and return the information it contains
 
-        Args:
-            datas (list): a list of the fileds in the line
-            load_sequence_in_memory (bool): if the line is a segment, ask to load its sequence
-            memory_mode (bool): if the strict minimum in information should be inserted
+        Parameters
+        ----------
+        datas : list[str]
+            the list of tab-separated elements of the GFA line.
+        load_sequence_in_memory : bool, optional
+            if it is a node, if the sequance should be or not loaded, by default True
+        regexp_pattern : str, optional
+            a pattern to keep for path names, by default ".*"
+        memory_mode : bool, optional
+            if additional information should be loaded in the struct, by default True
 
-        Returns:
-            tuple[str, GFALine, dict]: datas of the line in Python-compatible formats.
+        Returns
+        -------
+        tuple[str, GFALine, dict]
+            Conatins `id_of_line`, `type_of_line`, `datas_of_line`
         """
         line_datas: dict = dict()
         if not (datas[0].isupper() or len(datas) == 0):
@@ -258,11 +305,17 @@ class GFAParser:
     def save_graph(graph, output_path: str, force_format: GFAFormat | bool = False, minimal_graph: bool = False) -> None:
         """Given a gfa Graph object, saves to a valid gfa file the Graph.
 
-        Args:
-            output_path (str): a path on disk where to save
-            force_format (GfaFormat|bool): a format to choose for output.
-                if False, default graph format will be used.
-            minimal_graph (bool) if only necessary info should be kept in output gfa
+        Parameters
+        ----------
+        graph : Graph
+            the graph object loaded in memory
+        output_path : str
+            a path to an existing (or not) dile on the disk
+        force_format : GFAFormat | bool, optional
+            the output gfa subformat, by default False
+        minimal_graph : bool, optional
+            if only mandatory tags should be kept, by default False
+
         """
         # Haplotype number serves when we convert GFA1 to GFA1.1 for W-lines
         haplotype_number: int = 0

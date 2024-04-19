@@ -1,19 +1,34 @@
-"Abstract class for visualization and modelization of GFA in a NetworkX object"
 from networkx import MultiDiGraph, DiGraph
 from pgGraphs.graph import Graph
 from tharospytools.matplotlib_tools import get_palette
 
 
 class GFANetwork:
+    """Abstract class for visualization and modelization of GFA in a NetworkX object
+
+    Returns
+    -------
+    None
+        Methods are static and should be used passing arguments.
+    """
 
     @staticmethod
     def compute_backbone(
         graph: Graph
     ) -> DiGraph:
-        """Computes a networkx representation of the graph, for computing purposes
+        """Computes a networkx representation of the graph, for computing purposes.
+        This backbone contains the exact information of paths, nodes, edges... that is described in the loaded structure.
+        Allows to use every method of networkx library on the graph to perform traversal, neighborhood...
 
-        Returns:
-            DiGraph: a networkx graph featuring the backbone of the pangenome graph
+        Parameters
+        ----------
+        graph : Graph
+            a gfa graph loaded in memory using this library
+
+        Returns
+        -------
+        DiGraph
+            a networkx object, in the form of a directed graph.
         """
         backbone: DiGraph = DiGraph()
 
@@ -45,11 +60,21 @@ class GFANetwork:
         """Computes the networkx representation of the GFA.
         This function is intended to be used for graphical representation purposes, and not for computing metrics on the graph.
 
-        Args:
-            node_prefix (str): a prefix used when displaying multiple graphs to prevent node name collisions
+        Parameters
+        ----------
+        graph : Graph
+            a gfa graph loaded in memory using this library
+        node_prefix : str | None, optional
+            a name to put before every node, by default None
+        node_size_classes : tuple[list], optional
+            classes of size for coloring nodes, by default ( [0, 1], [2, 10], [11, 50], [51, 200], [201, 500], [ 501, 1000], [1001, 10000], [10001, float('inf')] )
+        start_stop_ref : tuple | bool, optional
+            defines starting and ending offset on the reference, by default False
 
-        Returns:
-            MultiDiGraph: a networkx graph featuring the maximum of information
+        Returns
+        -------
+        MultiDiGraph
+            a networkx object, in the form of a bidirected graph.
         """
         if start_stop_ref:
             graph.sequence_offsets(recalculate=True)
@@ -123,8 +148,10 @@ class GFANetwork:
         """Get nodes that are on the edges of the graph (starting and ending nodes)
         Those are characterized by their in/out degree : one of those has to be 0.
 
-        Returns:
-            list[str]: nodes names matching the condition.
+        Returns
+        -------
+        list[str]
+            nodes matching the criterion.
         """
         bone: DiGraph = self.compute_backbone()
         return [x for x in bone.nodes() if bone.out_degree(x) == 0 or bone.in_degree(x) == 0]

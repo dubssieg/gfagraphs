@@ -2,3 +2,4 @@ networkx
 tharos-pytools
 matplotlib
 mycolorpy
+furo

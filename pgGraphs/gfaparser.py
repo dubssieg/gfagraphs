@@ -3,7 +3,7 @@ from typing import Callable
 from json import loads, dumps
 from os import path, stat
 from tharospytools.path_tools import path_allocator
-from pgGraphs.abstractions import Orientation, GFALine, GFAFormat
+from pgGraphs.abstractions import Orientation, GFALine, GFAFormat, EdgeOrientation
 from gzip import open as gz_open
 from re import search
 
@@ -253,11 +253,13 @@ class GFAParser:
                 else:
                     return (datas[1], line_type, line_datas)
             case GFALine.LINE:
-                if memory_mode:
-                    line_datas["start"] = datas[1]
-                    line_datas["end"] = datas[3]
-                    line_datas["orientation"] = f"{datas[2]}/{datas[4]}"
-                    return ((line_datas['start'], line_datas['end']), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
+                if not memory_mode:
+                    line_datas["orientation"] = {
+                        EdgeOrientation(
+                            f"{datas[2]}/{datas[4]}"
+                        )
+                    }
+                    return ((datas[1], datas[3]), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
                 else:
                     return (None, None, None)
             case GFALine.WALK:
@@ -349,16 +351,14 @@ class GFAParser:
                     gfa_writer.write(
                         "S\t"+f"{segment_name}\t{segment_datas['seq'] if 'seq' in segment_datas else 'N'*segment_datas['length']}{supplementary_text}\n")
             if graph.lines:
-                for line in graph.lines.values():
+                for (source, sink), line in graph.lines.items():
                     supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])
                     # We accomodate for all alternatives orientation versions that are described in the input graph file to be written back
-                    all_alternates = line.pop(
-                        'alternates', []) + [line['orientation']]
-                    for alt in all_alternates:
-                        ori1, ori2 = alt.split('/')
+                    for alt in line['orientation']:
+                        ori1, ori2 = alt.value.split('/')
                         gfa_writer.write(
-                            f"L\t"+f"{line['start']}\t{ori1}\t{line['end']}\t{ori2}\t0M{supplementary_text}\n")
+                            f"L\t"+f"{source}\t{ori1}\t{sink}\t{ori2}\t0M{supplementary_text}\n")
             if graph.paths:
                 for path_name, path_datas in graph.paths.items():
                     supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(

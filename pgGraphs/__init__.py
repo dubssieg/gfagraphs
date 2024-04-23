@@ -2,4 +2,4 @@
 from .abstractions import GFALine, GFAFormat, Orientation
 from .gfaparser import GFAParser
 from .graph import Graph
-from .networkx import GFANetwork
+from .nx import GFANetwork

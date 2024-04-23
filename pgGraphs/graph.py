@@ -1,6 +1,6 @@
 "Modelizes a graph object"
 from itertools import count
-from pgGraphs.abstractions import GFALine, Orientation
+from pgGraphs.abstractions import GFALine, Orientation, EdgeOrientation, reverse
 from pgGraphs.gfaparser import GFAParser
 from gzip import open as gz_open
 from tharospytools.multithreading import futures_collector
@@ -29,6 +29,7 @@ class Graph():
         gfa_file: str | None = None,
         with_sequence: bool = True,
         low_memory: bool = False,
+        with_reverse_edges: bool = False,
         regexp: str = ".*",
     ) -> None:
         """Constructor for GFA Graph object.
@@ -41,6 +42,8 @@ class Graph():
             If sequence should be included in nodes. Consumes more memory with huge graphs, by default True
         low_memory : bool, optional
             If the minimal number of information should be loaded or not. If yes, will only load length of the nodes and the paths but not the edges, by default False
+        with_reverse_edges : bool, optional
+            If loading the graph should include computation of each reverse edge
         regexp : str, optional
             Regular expression to keep from the paths names (used to standardize/reduce them), by default ".*"
         """
@@ -75,8 +78,15 @@ class Graph():
                             if name not in self.lines:
                                 self.lines[name] = datas
                             else:
-                                self.lines[name]['alternates'] = self.lines[name].get(
-                                    'alternates', []) + [datas['orientation']]
+                                self.lines[name]['orientation'] = self.lines[name].get(
+                                    'orientation', set()).add(datas['orientation'])
+                            if with_reverse_edges:
+                                if name[::-1] not in self.lines:
+                                    self.lines[name[::-1]] = datas
+                                else:
+                                    self.lines[name[::-1]]['orientation'] = self.lines[name[::-1]].get(
+                                        'orientation', set()).add(reverse(datas['orientation']))
+
                         case GFALine.HEADER:
                             self.headers.append(datas)
                         case _:
@@ -288,12 +298,12 @@ class Graph():
             self.lines[(source, sink)] = {
                 'start': source,
                 'end': sink,
-                'orientation': f"{ori_source}/{ori_sink}",
+                'orientation': set(EdgeOrientation(f"{ori_source}/{ori_sink}")),
                 **metadata
             }
         else:
-            self.lines[(source, sink)]['alternates'] = self.lines[(source, sink)].get(
-                'alternates', []) + [f"{ori_source}/{ori_sink}"]
+            self.lines[(source, sink)]['orientation'] = self.lines[(source, sink)].get(
+                'orientation', set()).add(EdgeOrientation(f"{ori_source}/{ori_sink}"))
 
     def add_path(
         self,
@@ -434,11 +444,11 @@ class Graph():
                             ] = self.get_edges(segment_name)
         for (_, edge) in edges_of_node:
             if edge['start'] == segment_name:
-                orient: str = edge.datas['orientation'].split('/')[0]
+                orient: str = edge.datas['orientation'].value.split('/')[0]
                 # Edge is output, should be changed
                 edge['start'] = future_segment_name[-1]
             else:
-                orient: str = edge['orientation'].split('/')[-1]
+                orient: str = edge['orientation'].value.split('/')[-1]
                 # Edge is incomming edge, should be kept
 
         # Edit first node

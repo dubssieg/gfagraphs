@@ -9,6 +9,7 @@ copyright = f'{datetime.now().year}, Siegfried Dubois'
 author = 'Siegfried Dubois'
 release = str(nver('gfagraphs'))
 
+
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.mathjax',
@@ -22,4 +23,4 @@ templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 
 html_theme = 'furo'
-html_static_path = ['_static']
+html_static_path = []

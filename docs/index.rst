@@ -7,7 +7,7 @@ Welcome to gfagraphs's documentation!
 
       Graph <graph.rst>
       GFAParser <gfaparser.rst>
-      GFANetwork <nx.rst>
+      GFANetwork <network.rst>
       Abstractions <abstractions.rst>
 
 Indices and tables

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from setuptools import setup, find_packages
-from subprocess import run, PIPE
 from sys import version_info, stderr
 from setuptools import setup
 from pkg_resources import require
@@ -13,7 +12,7 @@ LICENCE: str = "LICENCE"
 DESCRIPTION: str = "Library to parse, edit and handle in memory GFA graphs"
 REQUIRED_PYTHON: tuple = (3, 10)
 OVERRIDE_VN: bool = True
-VN: str = "0.3.2"
+VN: str = "0.3.4"
 URL: str = "https://github.com/Tharos-ux/gfagraphs"
 REQUIREMENTS: list[str] = [
     'networkx',

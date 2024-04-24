@@ -1,6 +1,6 @@
 "Modelizes a graph object"
 from itertools import count
-from pgGraphs.abstractions import GFALine, Orientation, EdgeOrientation, reverse
+from pgGraphs.abstractions import GFALine, Orientation, reverse
 from pgGraphs.gfaparser import GFAParser
 from gzip import open as gz_open
 from tharospytools.multithreading import futures_collector
@@ -78,14 +78,26 @@ class Graph():
                             if name not in self.lines:
                                 self.lines[name] = datas
                             else:
-                                self.lines[name]['orientation'] = self.lines[name].get(
-                                    'orientation', set()).add(datas['orientation'])
+                                try:
+                                    self.lines[name]['orientation'] = self.lines[name].get(
+                                        'orientation',
+                                        {}
+                                    ) | datas['orientation']
+                                except TypeError:
+                                    print(name, self.lines[name].get(
+                                        'orientation', {}), datas['orientation'])
                             if with_reverse_edges:
+                                (_ttad,) = datas['orientation']
                                 if name[::-1] not in self.lines:
-                                    self.lines[name[::-1]] = datas
+                                    self.lines[name[::-1]] = {
+                                        'orientation': set(
+                                            [(reverse(_ttad[0]), reverse(_ttad[1]))]
+                                        )
+                                    }
+                                    self.lines[name[::-1]]
                                 else:
                                     self.lines[name[::-1]]['orientation'] = self.lines[name[::-1]].get(
-                                        'orientation', set()).add(reverse(datas['orientation']))
+                                        'orientation', set()) | set([(reverse(_ttad[0]), reverse(_ttad[1]))])
 
                         case GFALine.HEADER:
                             self.headers.append(datas)
@@ -298,12 +310,12 @@ class Graph():
             self.lines[(source, sink)] = {
                 'start': source,
                 'end': sink,
-                'orientation': set(EdgeOrientation(f"{ori_source}/{ori_sink}")),
+                'orientation': set([Orientation(ori_source), Orientation(ori_sink)]),
                 **metadata
             }
         else:
             self.lines[(source, sink)]['orientation'] = self.lines[(source, sink)].get(
-                'orientation', set()).add(EdgeOrientation(f"{ori_source}/{ori_sink}"))
+                'orientation', set()) | set([Orientation(ori_source), Orientation(ori_sink)])
 
     def add_path(
         self,
@@ -409,7 +421,8 @@ class Graph():
         breaks the node in multiple nodes and includes splits them in the Graph data
 
         If you want to split the segment A into A,B, ... you must provide
-        self.split_segments(A,[A,B, ...],[(start_A,end_A),(start_B,end_B), ...])
+        self.split_segments(
+            A,[A,B, ...],[(start_A,end_A),(start_B,end_B), ...])
 
         Parameters
         ----------
@@ -418,7 +431,7 @@ class Graph():
         future_segment_name : list
             the futures names of the nodes. The current name will be used for the first node of the splitting series
         position_to_split : list
-            a list of breakpoints where to split to. 
+            a list of breakpoints where to split to.
 
         Raises
         ------
@@ -568,6 +581,29 @@ class Graph():
                 path['path'][pos:pos-len(segs)+1] = [merge_name]
 
 ############### POsitionnal tag ###############
+
+    def compute_orientations(self) -> None:
+        """
+        Computes both predecessors and successors, by their orientations
+        This function is O(n) with n being the number of edges.
+        """
+        for node in self.segments.keys():
+            self.segments[node]['out_forward'] = set()
+            self.segments[node]['out_reverse'] = set()
+            self.segments[node]['in_forward'] = set()
+            self.segments[node]['in_reverse'] = set()
+        for (from_node, to_node), datas in self.lines.items():
+            for from_orientation, to_orientation in datas['orientation']:
+                if from_orientation == Orientation.FORWARD:
+                    self.segments[from_node]['out_forward'].add(
+                        (to_node, to_orientation))
+                    self.segments[to_node]['in_forward'].add(
+                        (from_node, from_orientation))
+                else:
+                    self.segments[from_node]['out_reverse'].add(
+                        (to_node, to_orientation))
+                    self.segments[to_node]['in_reverse'].add(
+                        (from_node, from_orientation))
 
     def compute_neighbors(self) -> None:
         """

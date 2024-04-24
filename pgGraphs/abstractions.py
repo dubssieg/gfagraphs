@@ -17,39 +17,25 @@ class Orientation(Enum):
     BOTH = '='
 
 
-class EdgeOrientation(Enum):
-    """Describes the way an edge direction is encoded
-
-    Parameters
-    ----------
-    Enum : str
-        One of the following: +/+, +/-, -/+, -/-
-    """
-    FF = '+/+'
-    RR = '-/-'
-    FR = '+/-'
-    RF = '-/+'
-
-
-def reverse(orientation: EdgeOrientation) -> EdgeOrientation:
+def reverse(orientation: Orientation) -> Orientation:
     """Returns the orientation of the reverse edge
 
     Parameters
     ----------
-    orientation : EdgeOrientation
-        _description_
+    orientation : Orientation
+        The orientation the edge is pointing on
 
     Returns
     -------
-    EdgeOrientation
+    Orientation
         The complementary operation
     """
     return {
-        EdgeOrientation.FF: EdgeOrientation.RR,
-        EdgeOrientation.RR: EdgeOrientation.FF,
-        EdgeOrientation.RF: EdgeOrientation.FR,
-        EdgeOrientation.FR: EdgeOrientation.RF,
-    }
+        Orientation.FORWARD: Orientation.REVERSE,
+        Orientation.REVERSE: Orientation.FORWARD,
+        Orientation.ANY: Orientation.ANY,
+        Orientation.BOTH: Orientation.BOTH,
+    }[orientation]
 
 
 class GFAFormat(Enum):

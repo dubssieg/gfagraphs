@@ -3,7 +3,7 @@ from typing import Callable
 from json import loads, dumps
 from os import path, stat
 from tharospytools.path_tools import path_allocator
-from pgGraphs.abstractions import Orientation, GFALine, GFAFormat, EdgeOrientation
+from pgGraphs.abstractions import Orientation, GFALine, GFAFormat
 from gzip import open as gz_open
 from re import search
 
@@ -237,7 +237,7 @@ class GFAParser:
         Returns
         -------
         tuple[str, GFALine, dict]
-            Conatins `id_of_line`, `type_of_line`, `datas_of_line`
+            Contains `id_of_line`, `type_of_line`, `datas_of_line`
         """
         line_datas: dict = dict()
         if not (datas[0].isupper() or len(datas) == 0):
@@ -254,11 +254,14 @@ class GFAParser:
                     return (datas[1], line_type, line_datas)
             case GFALine.LINE:
                 if not memory_mode:
-                    line_datas["orientation"] = {
-                        EdgeOrientation(
-                            f"{datas[2]}/{datas[4]}"
-                        )
-                    }
+                    line_datas["orientation"] = set(
+                        [
+                            (
+                                Orientation(datas[2]),
+                                Orientation(datas[4]),
+                            )
+                        ]
+                    )
                     return ((datas[1], datas[3]), line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 5)})
                 else:
                     return (None, None, None)
@@ -303,7 +306,7 @@ class GFAParser:
             case GFALine.HEADER | GFALine.ANY:
                 return (None, line_type, GFAParser.supplementary_datas(datas, 1))
 
-    @staticmethod
+    @ staticmethod
     def save_graph(graph, output_path: str, force_format: GFAFormat | bool = False, minimal_graph: bool = False) -> None:
         """Given a gfa Graph object, saves to a valid gfa file the Graph.
 
@@ -356,9 +359,9 @@ class GFAParser:
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])
                     # We accomodate for all alternatives orientation versions that are described in the input graph file to be written back
                     for alt in line['orientation']:
-                        ori1, ori2 = alt.value.split('/')
+                        ori1, ori2 = alt.split('/')
                         gfa_writer.write(
-                            f"L\t"+f"{source}\t{ori1}\t{sink}\t{ori2}\t0M{supplementary_text}\n")
+                            f"L\t"+f"{source}\t{ori1.value}\t{sink}\t{ori2.value}\t0M{supplementary_text}\n")
             if graph.paths:
                 for path_name, path_datas in graph.paths.items():
                     supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(

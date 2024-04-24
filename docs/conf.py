@@ -7,7 +7,7 @@ spath.insert(0, opath.abspath('../pgGraphs'))
 project = 'gfagraphs'
 copyright = f'{datetime.now().year}, Siegfried Dubois'
 author = 'Siegfried Dubois'
-release = version('gfagraphs')
+release = str(version('gfagraphs'))
 
 extensions = [
     'sphinx.ext.autodoc',

@@ -78,26 +78,20 @@ class Graph():
                             if name not in self.lines:
                                 self.lines[name] = datas
                             else:
-                                try:
-                                    self.lines[name]['orientation'] = self.lines[name].get(
-                                        'orientation',
-                                        {}
-                                    ) | datas['orientation']
-                                except TypeError:
-                                    print(name, self.lines[name].get(
-                                        'orientation', {}), datas['orientation'])
+                                [_ors,] = datas['orientation']
+                                self.lines[name]['orientation'].add(
+                                    (_ors[0], _ors[1]))
                             if with_reverse_edges:
                                 if name[::-1] not in self.lines:
                                     [_ors,] = datas['orientation']
                                     self.lines[name[::-1]] = {
                                         'orientation': set(
-                                            [_ors[::-1]]
+                                            [(reverse(_ors[1]), reverse(_ors[0]))]
                                         )
                                     }
-                                    self.lines[name[::-1]]
                                 else:
-                                    self.lines[name[::-1]]['orientation'] = self.lines[name[::-1]].get(
-                                        'orientation', set()) | set([_ors[::-1]])
+                                    self.lines[name[::-1]]['orientation'].add(
+                                        (reverse(_ors[1]), reverse(_ors[0])))
 
                         case GFALine.HEADER:
                             self.headers.append(datas)
@@ -598,16 +592,10 @@ class Graph():
             }
         for (from_node, to_node), datas in self.lines.items():
             for from_orientation, to_orientation in datas['orientation']:
-                if from_orientation == Orientation.FORWARD:
-                    self.segments[from_node]['out'][Orientation.FORWARD].add(
-                        (to_node, to_orientation))
-                    self.segments[to_node]['in'][Orientation.FORWARD].add(
-                        (from_node, from_orientation))
-                else:
-                    self.segments[from_node]['out'][Orientation.REVERSE].add(
-                        (to_node, to_orientation))
-                    self.segments[to_node]['in'][Orientation.REVERSE].add(
-                        (from_node, from_orientation))
+                self.segments[from_node]['out'][from_orientation].add(
+                    (to_node, to_orientation))
+                self.segments[to_node]['in'][to_orientation].add(
+                    (from_node, from_orientation))
 
     def compute_neighbors(self) -> None:
         """

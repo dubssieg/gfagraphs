@@ -38,12 +38,12 @@ class GFANetwork:
                 offsets=node_datas['PO'] if 'PO' in node_datas else None,
                 sequence=node_datas.get('seq', '')
             )
-        for edge_datas in graph.lines.values():
-
+        for (start, end), edge_data in graph.lines.items():
             backbone.add_edge(
-                edge_datas['start'],
-                edge_datas['end'],
-                label=edge_datas["orientation"],
+                start,
+                end,
+                label=' | '.join(
+                    [f'{x.value}/{y.value}' for (x, y) in edge_data["orientation"]]),
             )
         return backbone
 
@@ -134,12 +134,13 @@ class GFANetwork:
                     )
         # Otherwise we use edges
         else:
-            for edge_datas in graph.lines.values():
+            for (start, end), edge_data in graph.lines.items():
                 nx_graph.add_edge(
-                    f"{node_prefix}{edge_datas['start']}",
-                    f"{node_prefix}{edge_datas['end']}",
+                    f"{node_prefix}{start}",
+                    f"{node_prefix}{end}",
                     color='darkred',
-                    label=edge_datas["orientation"],
+                    label=' | '.join(
+                        [f'{x.value}/{y.value}' for (x, y) in edge_data["orientation"]]),
                     weight=3
                 )
         return nx_graph

@@ -359,7 +359,7 @@ class GFAParser:
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])
                     # We accomodate for all alternatives orientation versions that are described in the input graph file to be written back
                     for alt in line['orientation']:
-                        ori1, ori2 = alt.split('/')
+                        ori1, ori2 = alt
                         gfa_writer.write(
                             f"L\t"+f"{source}\t{ori1.value}\t{sink}\t{ori2.value}\t0M{supplementary_text}\n")
             if graph.paths:

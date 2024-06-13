@@ -302,14 +302,12 @@ class Graph():
                 raise ValueError("Not compatible with GFA format.")
         if (source, sink) not in self.lines:
             self.lines[(source, sink)] = {
-                'start': source,
-                'end': sink,
-                'orientation': set([Orientation(ori_source), Orientation(ori_sink)]),
+                'orientation': set([(Orientation(ori_source), Orientation(ori_sink))]),
                 **metadata
             }
         else:
             self.lines[(source, sink)]['orientation'] = self.lines[(source, sink)].get(
-                'orientation', set()) | set([Orientation(ori_source), Orientation(ori_sink)])
+                'orientation', set()) | set([(Orientation(ori_source), Orientation(ori_sink))])
 
     def add_path(
         self,

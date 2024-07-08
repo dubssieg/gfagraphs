@@ -383,3 +383,87 @@ class GFAParser:
                             f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas and path_datas['origin'] else haplotype_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}{supplementary_text}\n")
                     # In the case graph format is rgfa, we don't write any paths to output file
                     haplotype_number += 1
+
+    @staticmethod
+    def save_subgraph(graph, output_path: str, nodes: set[str], force_format: GFAFormat | bool = False, minimal_graph: bool = False) -> None:
+        """Given a gfa Graph object, saves to a valid gfa file the Graph.
+
+        Parameters
+        ----------
+        graph : Graph
+            the graph object loaded in memory
+        output_path : str
+            a path to an existing (or not) dile on the disk
+        force_format : GFAFormat | bool, optional
+            the output gfa subformat, by default False
+        minimal_graph : bool, optional
+            if only mandatory tags should be kept, by default False
+
+        """
+        # Haplotype number serves when we convert GFA1 to GFA1.1 for W-lines
+        haplotype_number: int = 0
+        if not force_format:
+            gfa_format: GFAFormat = graph.metadata['version'] if isinstance(
+                graph.metadata['version'], GFAFormat) else GFAFormat(graph.metadata['version'])
+        else:
+            gfa_format: GFAFormat = force_format
+
+        with open(path_allocator(output_path), 'w', encoding='utf-8') as gfa_writer:
+            if graph.headers and gfa_format != GFAFormat.RGFA:
+                # Writing hearder to output file if file is not rgfa
+                for header in graph.headers:
+                    supplementary_text: str = '' if minimal_graph else '\t' + \
+                        '\t'.join(
+                            [str(value) for key, value in header.items() if key.startswith('ARG')])
+                    gfa_writer.write(
+                        "H\t"
+                        +
+                        '\t'.join(
+                            [
+                                f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" for key, value in header.items() if not key.startswith('ARG')
+                            ]
+                        )
+                        +
+                        supplementary_text
+                        +
+                        "\n"
+                    )
+            if graph.segments:
+                # Whichever the format, those should be written
+                for segment_name, segment_datas in graph.segments.items():
+                    if segment_name in nodes:
+                        supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(
+                            [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in segment_datas.items() if key not in ['length', 'seq']])
+                        gfa_writer.write(
+                            "S\t"+f"{segment_name}\t{segment_datas['seq'] if 'seq' in segment_datas else 'N'*segment_datas['length']}{supplementary_text}\n")
+            if graph.lines:
+                for (source, sink), line in graph.lines.items():
+                    if source in nodes and sink in nodes:
+                        supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(
+                            [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in line.items() if key not in ['orientation', 'start', 'end']])
+                        # We accomodate for all alternatives orientation versions that are described in the input graph file to be written back
+                        for alt in line['orientation']:
+                            ori1, ori2 = alt
+                            gfa_writer.write(
+                                f"L\t"+f"{source}\t{ori1.value}\t{sink}\t{ori2.value}\t0M{supplementary_text}\n")
+            if graph.paths:
+                for path_name, path_datas in graph.paths.items():
+                    supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(
+                        [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in path_datas.items() if key not in ['path', 'start_offset', 'stop_offset', 'origin', 'name', 'id']])
+                    if gfa_format == GFAFormat.GFA1 or gfa_format == GFAFormat.ANY:  # P-line
+                        strpath: str = ','.join(
+                            [node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path'] if node_name in nodes])
+                        gfa_writer.write(
+                            f"P\t{path_name}\t{strpath}{supplementary_text}\n")
+                    elif gfa_format == GFAFormat.GFA1_1 or gfa_format == GFAFormat.GFA1_2 or gfa_format == GFAFormat.GFA2:
+                        # W-line
+                        offset_start: int | str = path_datas[
+                            'start_offset'] if 'start_offset' in path_datas and path_datas['start_offset'] else 0
+                        offset_stop: int | str = path_datas['stop_offset'] if 'stop_offset' in path_datas and path_datas['stop_offset'] else sum(
+                            [graph.segments[x]['length'] for (x, _) in path_datas['path']])
+                        strpath: str = ''.join(
+                            [f"{'>' if orient == Orientation.FORWARD or orient == '+' else '<'}{node_name}" for node_name, orient in path_datas['path'] if node_name in nodes])
+                        gfa_writer.write(
+                            f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas and path_datas['origin'] else haplotype_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}{supplementary_text}\n")
+                    # In the case graph format is rgfa, we don't write any paths to output file
+                    haplotype_number += 1

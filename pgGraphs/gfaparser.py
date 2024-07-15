@@ -366,7 +366,7 @@ class GFAParser:
                 for path_name, path_datas in graph.paths.items():
                     supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in path_datas.items() if key not in ['path', 'start_offset', 'stop_offset', 'origin', 'name', 'id']])
-                    if gfa_format == GFAFormat.GFA1:  # P-line
+                    if gfa_format == GFAFormat.GFA1 or gfa_format == GFAFormat.ANY:  # P-line
                         strpath: str = ','.join(
                             [node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])
                         gfa_writer.write(

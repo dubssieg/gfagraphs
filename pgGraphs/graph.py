@@ -127,6 +127,17 @@ class Graph():
             minimal_graph=minimal,
         )
 
+    def compare_pathnames_to_string(self, string_to_search: str) -> str | bool:
+        for path_name, path_data in self.paths.items():
+            if any(
+                path_data['id'] == string_to_search,
+                f"{path_data['name']}#{path_data['origin']}#{path_data['id']}" == string_to_search,
+                f"{path_data['name']}.{path_data['origin']}.{path_data['id']}" == string_to_search,
+                f"{path_data['name']}#{path_data['origin']}#{path_data['id']}#{path_data['origin']}" == string_to_search,
+            ):
+                return path_name
+        return False
+
     def reconstruct_sequences(self) -> dict[str, Generator]:
         """Reads the paths (if they exists) that describes genomes in the graph
         Aggregates the nodes (by their reading direction) per path

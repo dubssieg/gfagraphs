@@ -267,8 +267,8 @@ class GFAParser:
                     return (None, None, None)
             case GFALine.WALK:
                 line_datas["name"] = datas[1]
-                line_datas["id"] = datas[3]
                 line_datas["origin"] = datas[2]
+                line_datas["id"] = datas[3]
                 line_datas["start_offset"] = datas[4]
                 line_datas["stop_offset"] = datas[5]
                 line_datas["path"] = [
@@ -285,9 +285,14 @@ class GFAParser:
                     label: str = datas[3].upper()
                 return (label, line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
             case GFALine.PATH:
-                line_datas["name"] = datas[1]
-                line_datas["id"] = datas[1]
-                line_datas["origin"] = None
+                if len(datas[1].split('#')) == 3:
+                    line_datas["name"] = datas[1].split('#')[0]
+                    line_datas["origin"] = datas[1].split('#')[1]
+                    line_datas["id"] = datas[1].split('#')[2]
+                else:
+                    line_datas["name"] = datas[1]
+                    line_datas["origin"] = None
+                    line_datas["id"] = datas[1]
                 line_datas["start_offset"] = None
                 line_datas["stop_offset"] = None
                 line_datas["path"] = [
@@ -299,14 +304,14 @@ class GFAParser:
                 ]
                 try:
                     label: str = search(
-                        regexp_pattern, datas[1]).group(1).upper()
+                        regexp_pattern, line_datas["id"]).group(1).upper()
                 except:
-                    label: str = datas[1].upper()
+                    label: str = line_datas["id"].upper()
                 return (label, line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
             case GFALine.HEADER | GFALine.ANY:
                 return (None, line_type, GFAParser.supplementary_datas(datas, 1))
 
-    @ staticmethod
+    @staticmethod
     def save_graph(graph, output_path: str, force_format: GFAFormat | bool = False, minimal_graph: bool = False) -> None:
         """Given a gfa Graph object, saves to a valid gfa file the Graph.
 
@@ -367,6 +372,11 @@ class GFAParser:
                     supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in path_datas.items() if key not in ['path', 'start_offset', 'stop_offset', 'origin', 'name', 'id']])
                     if gfa_format == GFAFormat.GFA1 or gfa_format == GFAFormat.ANY:  # P-line
+                        # We recompose the name of the path if needed
+                        if path_datas['origin'] is None:
+                            label: str = path_datas['name']
+                        else:
+                            label: str = f"{path_datas['name']}#{path_datas['origin']}#{path_datas['id']}"
                         strpath: str = ','.join(
                             [node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])
                         gfa_writer.write(

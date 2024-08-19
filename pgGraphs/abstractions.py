@@ -65,7 +65,7 @@ class GFALine(Enum):
         One of S | L | W | P | H | # | ?. See GFA-spec.
     """
     SEGMENT = 'S'
-    LINE = 'L'
+    LINK = 'L'
     WALK = 'W'
     PATH = 'P'
     HEADER = 'H'

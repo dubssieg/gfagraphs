@@ -74,7 +74,7 @@ class Graph():
                             self.segments[name] = datas
                         case GFALine.WALK | GFALine.PATH:
                             self.paths[name] = datas
-                        case GFALine.LINE:
+                        case GFALine.LINK:
                             if name not in self.lines:
                                 self.lines[name] = datas
                             else:
@@ -322,6 +322,7 @@ class Graph():
 
     def add_path(
         self,
+        identifier: str,
         name: str,
         chain: list[tuple[str, Orientation]],
         start: int = 0,
@@ -347,7 +348,8 @@ class Graph():
             alternative name, used for W-line formatting, by default None
         """
         self.paths[name] = {
-            "id": name,
+            "id": identifier,
+            "name": name,
             "origin": origin,
             "start_offset": start,
             "stop_offset": end if end is not None else sum([self.segments[x]['length'] for x, _ in chain]),

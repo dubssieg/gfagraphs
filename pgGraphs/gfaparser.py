@@ -252,7 +252,7 @@ class GFAParser:
                     return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 3)})
                 else:
                     return (datas[1], line_type, line_datas)
-            case GFALine.LINE:
+            case GFALine.LINK:
                 if not memory_mode:
                     line_datas["orientation"] = set(
                         [
@@ -279,8 +279,10 @@ class GFAParser:
                     for node in datas[6].replace('>', ',+').replace('<', ',-')[1:].split(',')
                 ]
                 try:
+                    # search(regexp_pattern, datas[3]).group(1).upper()
                     label: str = search(
-                        regexp_pattern, datas[3]).group(1).upper()
+                        regexp_pattern, f'{datas[1]}#{datas[2]}#{datas[3]}'
+                    ).group(1)
                 except:
                     label: str = datas[3].upper()
                 return (label, line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
@@ -304,7 +306,7 @@ class GFAParser:
                 ]
                 try:
                     label: str = search(
-                        regexp_pattern, line_datas["id"]).group(1).upper()
+                        regexp_pattern, line_datas["id"]).group(1)
                 except:
                     label: str = line_datas["id"].upper()
                 return (label, line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 7)})
@@ -371,16 +373,8 @@ class GFAParser:
                 for path_name, path_datas in graph.paths.items():
                     supplementary_text: str = '' if minimal_graph else "\t" + '\t'.join(
                         [f"{key}:{GFAParser.get_python_type(value)}:{GFAParser.set_gfa_type(GFAParser.get_python_type(value))(value)}" if not key.startswith('ARG') else str(value) for key, value in path_datas.items() if key not in ['path', 'start_offset', 'stop_offset', 'origin', 'name', 'id']])
-                    if gfa_format == GFAFormat.GFA1 or gfa_format == GFAFormat.ANY:  # P-line
-                        # We recompose the name of the path if needed
-                        if path_datas['origin'] is None:
-                            label: str = path_datas['name']
-                        else:
-                            label: str = f"{path_datas['name']}#{path_datas['origin']}#{path_datas['id']}"
-                        strpath: str = ','.join(
-                            [node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])
-                        gfa_writer.write(
-                            f"P\t{path_name}\t{strpath}{supplementary_text}\n")
+                    if gfa_format == GFAFormat.RGFA:
+                        pass
                     elif gfa_format == GFAFormat.GFA1_1 or gfa_format == GFAFormat.GFA1_2 or gfa_format == GFAFormat.GFA2:
                         # W-line
                         offset_start: int | str = path_datas[
@@ -392,6 +386,16 @@ class GFAParser:
                         gfa_writer.write(
                             f"W\t{path_name}\t{path_datas['origin'] if 'origin' in path_datas and path_datas['origin'] else haplotype_number}\t{path_name}\t{offset_start}\t{offset_stop}\t{strpath}{supplementary_text}\n")
                     # In the case graph format is rgfa, we don't write any paths to output file
+                    else:  # P-line
+                        # We recompose the name of the path if needed
+                        if path_datas['origin'] is None:
+                            label: str = path_datas['name']
+                        else:
+                            label: str = f"{path_datas['name']}#{path_datas['origin']}#{path_datas['id']}"
+                        strpath: str = ','.join(
+                            [node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])
+                        gfa_writer.write(
+                            f"P\t{path_name}\t{strpath}{supplementary_text}\n")
                     haplotype_number += 1
 
     @staticmethod

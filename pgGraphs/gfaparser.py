@@ -219,7 +219,7 @@ class GFAParser:
         return mapping
 
     @staticmethod
-    def read_gfa_line(datas: list[str], load_sequence_in_memory: bool = True, regexp_pattern: str = ".*", memory_mode: bool = True) -> tuple[str, GFALine, dict]:
+    def read_gfa_line(datas: list[str], load_sequence_in_memory: bool = True, regexp_pattern: str = ".*", memory_mode: bool = False) -> tuple[str, GFALine, dict]:
         """Calls methods to parse a GFA line, accordingly to it's fields described in the GFAspec github.
         Parses a single line and return the information it contains
 
@@ -245,10 +245,10 @@ class GFAParser:
 
         match (line_type := GFALine(datas[0])):
             case GFALine.SEGMENT:
-                line_datas["length"] = len(datas[2])
+                line_datas["length"] = len(datas[2].strip())
                 if load_sequence_in_memory:
-                    line_datas["seq"] = datas[2]
-                if memory_mode:
+                    line_datas["seq"] = datas[2].strip()
+                if not memory_mode:
                     return (datas[1], line_type, {**line_datas, **GFAParser.supplementary_datas(datas, 3)})
                 else:
                     return (datas[1], line_type, line_datas)
@@ -271,13 +271,16 @@ class GFAParser:
                 line_datas["id"] = datas[3]
                 line_datas["start_offset"] = datas[4]
                 line_datas["stop_offset"] = datas[5]
-                line_datas["path"] = [
-                    (
-                        node[1:],
-                        Orientation(node[0])
-                    )
-                    for node in datas[6].replace('>', ',+').replace('<', ',-')[1:].split(',')
-                ]
+                try:
+                    line_datas["path"] = [
+                        (
+                            node[1:],
+                            Orientation(node[0])
+                        )
+                        for node in datas[6].replace('>', ',+').replace('<', ',-')[1:].split(',')
+                    ]
+                except IndexError:
+                    line_datas["path"] = list()
                 try:
                     # search(regexp_pattern, datas[3]).group(1).upper()
                     label: str = search(
@@ -297,13 +300,16 @@ class GFAParser:
                     line_datas["id"] = datas[1]
                 line_datas["start_offset"] = None
                 line_datas["stop_offset"] = None
-                line_datas["path"] = [
-                    (
-                        node[:-1],
-                        Orientation(node[-1])
-                    )
-                    for node in datas[2].split(',')
-                ]
+                try:
+                    line_datas["path"] = [
+                        (
+                            node[:-1],
+                            Orientation(node[-1])
+                        )
+                        for node in datas[2].split(',')
+                    ]
+                except IndexError:
+                    line_datas["path"] = list()
                 try:
                     label: str = search(
                         regexp_pattern, line_datas["id"]).group(1)

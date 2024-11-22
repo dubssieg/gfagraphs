@@ -3,9 +3,67 @@ from itertools import count
 from pgGraphs.abstractions import GFALine, Orientation, reverse
 from pgGraphs.gfaparser import GFAParser
 from gzip import open as gz_open
-from tharospytools.multithreading import futures_collector
-from tharospytools.bio_tools import revcomp
 from typing import Any, Generator
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import cpu_count
+from typing import Callable
+from collections.abc import Iterable
+
+
+def futures_collector(
+    func: Callable,
+        argslist: list,
+        kwargslist: list[dict] | None = None,
+        num_processes: int = cpu_count(),
+) -> list:
+    """
+    Spawns len(arglist) instances of func and executes them at num_processes instances at time.
+
+    * func : a function
+    * argslist (list): a list of tuples, arguments of each func
+    * kwargslist (list[dict]) a list of dicts, kwargs for each func
+    * num_processes (int) : max number of concurrent instances.
+        Default : number of available logic cores
+    * memory (float|None) : ratio of memory to be used, ranging from .05 to .95. Will not work if *resource* is incompatible.
+    """
+    if kwargslist is None or len(kwargslist) == len(argslist):
+        with ThreadPoolExecutor(max_workers=num_processes) as executor:
+            futures = [
+                executor.submit(
+                    func,
+                    *args if isinstance(args, Iterable) else args
+                ) if kwargslist is None else
+                executor.submit(
+                    func,
+                    *args if isinstance(args, Iterable) else args,
+                    **kwargslist[i]
+                ) for i, args in enumerate(argslist)
+            ]
+        return [f.result() for f in futures]
+    else:
+        raise ValueError(
+            f"""Positionnal argument list length ({len(argslist)})
+            does not match keywords argument list length ({len(kwargslist)}).""")
+
+
+def revcomp(string: str, compl: dict = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A', 'N': 'N'}) -> str:
+    """Tries to compute the reverse complement of a sequence
+
+    Args:
+        string (str): original character set
+        compl (dict, optional): dict of correspondances. Defaults to {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}.
+
+    Raises:
+        IndexError: Happens if revcomp encounters a char that is not in the dict
+
+    Returns:
+        str: the reverse-complemented string
+    """
+    try:
+        return ''.join([compl[s] for s in string][::-1])
+    except IndexError as exc:
+        raise IndexError(
+            "Complementarity does not include all chars in sequence.") from exc
 
 
 class Graph():

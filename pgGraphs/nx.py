@@ -1,6 +1,31 @@
 from networkx import MultiDiGraph, DiGraph
 from pgGraphs.graph import Graph
-from tharospytools.matplotlib_tools import get_palette
+import matplotlib as mpl
+from matplotlib.colors import rgb2hex
+from abstractions import GFAFormat
+
+
+def get_palette(number_of_colors: int, cmap_name: str = 'viridis', as_hex: bool = False) -> list:
+    """Returns a number_of_colors-sized palette, as a list,
+    that one can access with colors[i].
+
+    Args:
+        number_of_colors (int): number of colors needed
+        cmap_name (str, optionnal) : name of the matplotlib colormap. Defaults to viridis.
+        hex (bool) : specifies if colors shall be returned by rgb values (False, default) or hex (True)
+
+    Returns:
+        list: palette of colors
+    """
+    try:
+        colormap = mpl.colormaps[cmap_name].resampled(number_of_colors)
+    except Exception as exc:
+        raise ValueError(
+            f"The colormap {cmap_name} is not a valid colormap") from exc
+    return [
+        rgb2hex(colormap(x/number_of_colors)) if as_hex
+        else colormap(x/number_of_colors) for x in range(number_of_colors)
+    ]
 
 
 class GFANetwork:
@@ -50,6 +75,7 @@ class GFANetwork:
     @staticmethod
     def compute_networkx(
         graph: Graph,
+        enforce_format: GFAFormat | None = None,
         node_prefix: str | None = None,
         node_size_classes: tuple[list] = (
             [0, 1], [2, 10], [11, 50], [51, 200], [201, 500], [
@@ -119,7 +145,7 @@ class GFANetwork:
             **{path_name: palette[i] for i, path_name in enumerate(graph.paths.keys())}
         }
         # If paths are available, we iterate on them
-        if len(graph.paths) > 0:
+        if len(graph.paths) > 0 and enforce_format != GFAFormat.RGFA:
             for y, (path_name, path_datas) in enumerate(graph.paths.items()):
                 for i in range(len(path_datas["path"])-1):
                     left_node, left_orient = path_datas["path"][i]

@@ -5,15 +5,12 @@
 
 # GFAGraphs - A Python GFA library
 
-> [!WARNING]\
-> A paper is in preparation about this work. If you consider to use this tool, please contact the author for attribution.
-
 This Python library aims to be an abstraction layer for GFA file format.
 
 > [!WARNING]\
-> The old version of `gfagraphs` has been deprecated (since v0.3.0), in favour of `pgGraphs`. Using `gfagraphs` or `pgGraphs` to import resolves now in using the same library. In a near future, `pgGraphs` namespace will be deprecated.
+> `gfagraphs` is not actively maintained as I moved to Rust for my main research work. However, as the library is used in some projects, the library remains available as is.
 
-## Package `pgGraphs`/`gfagraphs`
+## Package `gfagraphs`
 
 ![](https://media.discordapp.net/attachments/874430800802754623/1179353568105467964/library.png)
 

@@ -12,8 +12,8 @@ LICENCE: str = "LICENCE"
 DESCRIPTION: str = "Library to parse, edit and handle in memory GFA graphs"
 REQUIRED_PYTHON: tuple = (3, 10)
 OVERRIDE_VN: bool = True
-VN: str = "0.3.17"
-URL: str = "https://github.com/Tharos-ux/gfagraphs"
+VN: str = "0.3.18"
+URL: str = "https://github.com/dubbsieg/gfagraphs"
 REQUIREMENTS: list[str] = [
     'networkx',
     'matplotlib',

@@ -2,7 +2,7 @@ from re import match
 from typing import Callable
 from json import loads, dumps
 from os import path, stat
-from pgGraphs.abstractions import Orientation, GFALine, GFAFormat
+from gfagraphs.abstractions import Orientation, GFALine, GFAFormat
 from gzip import open as gz_open
 from re import search
 from pathlib import Path

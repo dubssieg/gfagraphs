@@ -1,8 +1,8 @@
 from networkx import MultiDiGraph, DiGraph
-from pgGraphs.graph import Graph
+from gfagraphs.graph import Graph
 import matplotlib as mpl
 from matplotlib.colors import rgb2hex
-from pgGraphs.abstractions import GFAFormat
+from gfagraphs.abstractions import GFAFormat
 
 
 def get_palette(number_of_colors: int, cmap_name: str = 'viridis', as_hex: bool = False) -> list:

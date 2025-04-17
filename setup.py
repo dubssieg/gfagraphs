@@ -12,7 +12,7 @@ LICENCE: str = "LICENCE"
 DESCRIPTION: str = "Library to parse, edit and handle in memory GFA graphs"
 REQUIRED_PYTHON: tuple = (3, 10)
 OVERRIDE_VN: bool = True
-VN: str = "0.3.18"
+VN: str = "0.3.20"
 URL: str = "https://github.com/dubbsieg/gfagraphs"
 REQUIREMENTS: list[str] = [
     'networkx',
@@ -38,34 +38,6 @@ if argv[1] in ('install', 'sdist', 'bdist_wheel'):
             _iv: list = [0, 0, 0]
         finally:
             _iv: str = '.'.join([str(x) for x in _iv])
-
-    _sb, _eb = "{", "}"
-    with open('pyproject.toml', 'w', encoding='utf-8') as tomlwriter:
-        tomlwriter.write(
-            f"""[build-system]
-    requires = ["setuptools>=61.0"]
-    build-backend = "setuptools.build_meta"
-
-    [project]
-    name = "{NAME}"
-    version = "{_iv}"
-    authors = [
-    {_sb} name="{AUTHOR[0]}", email="{AUTHOR_EMAIL[0]}" {_eb},
-    ]
-    description = "{DESCRIPTION}"
-    readme = "README.md"
-    requires-python = ">={'.'.join([str(x) for x in REQUIRED_PYTHON])}"
-    classifiers = [
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
-        "Operating System :: OS Independent",
-    ]
-
-    [project.urls]
-    "Homepage" = "{URL}"
-    "Bug Tracker" = "{URL}/issues"
-    """
-        )
 else:
     _iv: str = VN if OVERRIDE_VN else require(NAME)[0].version
 

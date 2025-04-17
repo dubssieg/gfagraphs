@@ -1,7 +1,7 @@
 "Modelizes a graph object"
 from itertools import count
-from pgGraphs.abstractions import GFALine, Orientation, reverse
-from pgGraphs.gfaparser import GFAParser
+from gfagraphs.abstractions import GFALine, Orientation, reverse
+from gfagraphs.gfaparser import GFAParser
 from gzip import open as gz_open
 from typing import Any, Generator
 from concurrent.futures import ThreadPoolExecutor

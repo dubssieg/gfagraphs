@@ -1,0 +1,22 @@
+[build-system]
+    requires = ["setuptools >= 77.0.3"]
+    build-backend = "setuptools.build_meta"
+
+    [project]
+    name = "gfagraphs"
+    version = "0.3.20"
+    authors = [
+    { name="Siegfried Dubois", email="siegfried.dubois@inria.fr" },
+    ]
+    description = "Library to parse, edit and handle in memory GFA graphs"
+    readme = "README.md"
+    requires-python = ">=3.10"
+    classifiers = [
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+    ]
+
+    [project.urls]
+    "Homepage" = "https://github.com/dubbsieg/gfagraphs"
+    "Bug Tracker" = "https://github.com/dubbsieg/gfagraphs/issues"
+    

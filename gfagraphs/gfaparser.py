@@ -440,7 +440,7 @@ class GFAParser:
                         strpath: str = ','.join(
                             [node_name+'+' if orient == Orientation.FORWARD else node_name+'-' for node_name, orient in path_datas['path']])
                         gfa_writer.write(
-                            f"P\t{path_name}\t{strpath}{supplementary_text}\n")
+                            f"P\t{path_name}\t{strpath}{supplementary_text}\t*\n")
                     haplotype_number += 1
 
     @staticmethod

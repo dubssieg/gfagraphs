@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 from setuptools import setup, find_packages
 from sys import version_info, stderr
-from setuptools import setup
-from pkg_resources import require
 from sys import argv
 
 NAME: str = "gfagraphs"
@@ -12,7 +10,7 @@ LICENCE: str = "LICENCE"
 DESCRIPTION: str = "Library to parse, edit and handle in memory GFA graphs"
 REQUIRED_PYTHON: tuple = (3, 10)
 OVERRIDE_VN: bool = True
-VN: str = "0.3.20"
+VN: str = "0.3.21"
 URL: str = "https://github.com/dubbsieg/gfagraphs"
 REQUIREMENTS: list[str] = [
     'networkx',

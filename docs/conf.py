@@ -2,7 +2,7 @@ from os import path as opath
 from sys import path as spath
 from importlib.metadata import version as nver
 from datetime import datetime
-spath.insert(0, opath.abspath('../pgGraphs'))
+spath.insert(0, opath.abspath('../gfagraphs'))
 
 project = 'gfagraphs'
 copyright = f'{datetime.now().year}, Siegfried Dubois'

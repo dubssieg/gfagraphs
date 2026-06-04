@@ -1,5 +1,5 @@
 GFANetwork: NetworkX compatibility for GFA graphs
 =================================================
 
-.. automodule:: pgGraphs.nx
+.. automodule:: gfagraphs.nx
    :members:
